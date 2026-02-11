@@ -8,6 +8,7 @@ type VideoRow = { id: string } & VideoDoc;
 
 export function Videos() {
   const [items, setItems] = useState<VideoRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [toast, setToast] = useState<{ open: boolean; text: string; kind: "info" | "ok" | "err" }>({
     open: false,
@@ -20,8 +21,10 @@ export function Videos() {
       try {
         const rows = await listVisibleVideos();
         setItems(rows);
-      } catch (e) {
+      } catch {
         setToast({ open: true, text: "Failed to load videos. Check Firestore rules & visibility.", kind: "err" });
+      } finally {
+        setLoading(false);
       }
     })();
   }, []);
@@ -47,7 +50,17 @@ export function Videos() {
         }
       />
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="grid gap-5 md:grid-cols-2">
+          {[0, 1].map((n) => (
+            <article key={n} className="card overflow-hidden p-5">
+              <div className="h-52 animate-pulse rounded-xl bg-white/10" />
+              <div className="mt-4 h-5 w-1/2 animate-pulse rounded bg-white/10" />
+              <div className="mt-2 h-3 w-full animate-pulse rounded bg-white/10" />
+            </article>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="card p-8 text-slate-300">
           No videos yet. Add items from the Admin panel (videos must be <span className="badge">visible: true</span>).
         </div>

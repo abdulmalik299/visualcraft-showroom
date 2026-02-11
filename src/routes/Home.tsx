@@ -1,6 +1,13 @@
 import { Link } from "react-router-dom";
 import { SectionTitle } from "../components/SectionTitle";
 
+const highlights = [
+  { title: "Fast showcase", text: "Responsive cards, lazy loading, and clean layout for portfolio browsing." },
+  { title: "Admin publishing", text: "Upload assets to Firebase Storage and publish instantly from one dashboard." },
+  { title: "Serverless payments", text: "Use Stripe/PayPal/Payoneer links without building backend checkout." },
+  { title: "3D preview", text: "Interactive GLB previews with camera controls, poster fallback, and lighting." }
+];
+
 export function Home() {
   return (
     <div>
@@ -11,11 +18,11 @@ export function Home() {
             <div>
               <div className="badge">Portfolio + Store</div>
               <h1 className="mt-4 text-4xl font-extrabold tracking-tight md:text-5xl">
-                A professional showroom for motion design, 3D, and product visuals.
+                Launch a polished digital showroom for your videos, renders, and 3D assets.
               </h1>
               <p className="mt-4 text-base text-slate-300">
-                Showcase your best videos and image projects, then sell or share 3D models with modern previews and clean
-                filters—built to run on GitHub Pages with Firebase.
+                VisualCraft combines portfolio presentation and product sales in a single fast website. Publish content from
+                Firebase, highlight your best work, and guide visitors from discovery to checkout.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link to="/videos" className="btn-primary">Watch Videos</Link>
@@ -24,22 +31,12 @@ export function Home() {
               </div>
 
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                <div className="card p-4">
-                  <div className="text-sm font-bold">Fast showcase</div>
-                  <div className="mt-1 text-sm text-slate-300">Responsive cards, lazy loading, and clean layout.</div>
-                </div>
-                <div className="card p-4">
-                  <div className="text-sm font-bold">Admin publishing</div>
-                  <div className="mt-1 text-sm text-slate-300">Upload assets to Firebase Storage and publish instantly.</div>
-                </div>
-                <div className="card p-4">
-                  <div className="text-sm font-bold">Serverless payments</div>
-                  <div className="mt-1 text-sm text-slate-300">Use Stripe/PayPal/Payoneer links—no backend required.</div>
-                </div>
-                <div className="card p-4">
-                  <div className="text-sm font-bold">3D preview</div>
-                  <div className="mt-1 text-sm text-slate-300">Interactive GLB previews with orbit, zoom, and lighting.</div>
-                </div>
+                {highlights.map((item) => (
+                  <div key={item.title} className="card p-4">
+                    <div className="text-sm font-bold">{item.title}</div>
+                    <div className="mt-1 text-sm text-slate-300">{item.text}</div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -47,26 +44,28 @@ export function Home() {
               <div className="aspect-[16/10] overflow-hidden rounded-xl border border-white/10 bg-black/30">
                 <div className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,rgba(56,189,248,0.35),transparent_40%),radial-gradient(circle_at_70%_55%,rgba(217,70,239,0.25),transparent_45%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0))]" />
               </div>
+
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-300">Featured</div>
-                  <div className="mt-1 font-bold">Showreels</div>
+                  <div className="text-xs text-slate-300">Website speed</div>
+                  <div className="mt-1 font-bold">Optimized for static hosting</div>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-300">Featured</div>
-                  <div className="mt-1 font-bold">3D Asset Packs</div>
+                  <div className="text-xs text-slate-300">Security</div>
+                  <div className="mt-1 font-bold">Firebase auth + Firestore rules</div>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-300">Featured</div>
-                  <div className="mt-1 font-bold">Product Ads</div>
+                  <div className="text-xs text-slate-300">Asset support</div>
+                  <div className="mt-1 font-bold">MP4, JPG/PNG, GLB/GLTF</div>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-300">Featured</div>
-                  <div className="mt-1 font-bold">Motion Graphics</div>
+                  <div className="text-xs text-slate-300">Scalability</div>
+                  <div className="mt-1 font-bold">Ready for future backend upgrade</div>
                 </div>
               </div>
+
               <div className="mt-4 text-xs text-slate-400">
-                Tip: use the Admin panel to upload MP4, JPG/PNG, and GLB files to Firebase Storage.
+                Tip: Keep your hero videos and product covers compressed for faster first-load on mobile.
               </div>
             </div>
           </div>
@@ -81,21 +80,15 @@ export function Home() {
         <div className="grid gap-4 md:grid-cols-3">
           <div className="card p-5">
             <div className="text-sm font-extrabold">Email-link sign-in</div>
-            <p className="mt-2 text-sm text-slate-300">
-              Users receive a secure sign-in link (verification) in email. No OTP codes.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">Users receive a secure verification link in email without OTP codes.</p>
           </div>
           <div className="card p-5">
             <div className="text-sm font-extrabold">Content moderation</div>
-            <p className="mt-2 text-sm text-slate-300">
-              Every item has a <span className="badge">visible</span> flag so you can draft privately then publish.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">Every item has a <span className="badge">visible</span> flag for draft-first publishing.</p>
           </div>
           <div className="card p-5">
             <div className="text-sm font-extrabold">SEO basics</div>
-            <p className="mt-2 text-sm text-slate-300">
-              Clean routes, meta description, and fast client-side navigation. Add more meta tags easily.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">Clean routes and performant navigation for better indexing and usability.</p>
           </div>
         </div>
 
