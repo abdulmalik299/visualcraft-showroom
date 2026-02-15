@@ -2,10 +2,10 @@ import { Link } from "react-router-dom";
 import { SectionTitle } from "../components/SectionTitle";
 
 const highlights = [
-  { title: "Fast showcase", text: "Responsive cards, lazy loading, and clean layout for portfolio browsing." },
-  { title: "Admin publishing", text: "Upload assets to Firebase Storage and publish instantly from one dashboard." },
-  { title: "Serverless payments", text: "Use Stripe/PayPal/Payoneer links without building backend checkout." },
-  { title: "3D preview", text: "Interactive GLB previews with camera controls, poster fallback, and lighting." }
+  { title: "Live R2 gallery", text: "Images load directly from your Cloudflare R2 images/ folder." },
+  { title: "Auto video discovery", text: "New videos appear automatically from videos/ with matching thumbnails/." },
+  { title: "Multiple quality", text: "If you upload 720p/1080p variants, visitors can choose playback quality." },
+  { title: "Fast playback", text: "Metadata preloading, poster-first rendering, and lightweight cards for speed." }
 ];
 
 export function Home() {
@@ -16,17 +16,15 @@ export function Home() {
         <div className="container-pad relative py-16">
           <div className="grid gap-10 md:grid-cols-2 md:items-center">
             <div>
-              <div className="badge">Portfolio + Store</div>
+              <div className="badge">Cloudflare R2 Powered</div>
               <h1 className="mt-4 text-4xl font-extrabold tracking-tight md:text-5xl">
-                Launch a polished digital showroom for your videos, renders, and 3D assets.
+                A clean digital showroom for your videos and image work.
               </h1>
               <p className="mt-4 text-base text-slate-300">
-                VisualCraft combines portfolio presentation and product sales in a single fast website. Publish content from
-                Firebase, highlight your best work, and guide visitors from discovery to checkout.
+                Upload files into R2 and this website automatically reflects your latest media in the Videos and Gallery tabs.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link to="/videos" className="btn-primary">Watch Videos</Link>
-                <Link to="/store" className="btn-ghost">Browse 3D Store</Link>
                 <Link to="/gallery" className="btn-ghost">Image Gallery</Link>
               </div>
 
@@ -47,25 +45,21 @@ export function Home() {
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-300">Website speed</div>
-                  <div className="mt-1 font-bold">Optimized for static hosting</div>
+                  <div className="text-xs text-slate-300">Folder sync</div>
+                  <div className="mt-1 font-bold">images/ videos/ thumbnails/</div>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                   <div className="text-xs text-slate-300">Security</div>
-                  <div className="mt-1 font-bold">Firebase auth + Firestore rules</div>
+                  <div className="mt-1 font-bold">No visitor accounts required</div>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-300">Asset support</div>
-                  <div className="mt-1 font-bold">MP4, JPG/PNG, GLB/GLTF</div>
+                  <div className="text-xs text-slate-300">Media support</div>
+                  <div className="mt-1 font-bold">MP4/WebM + JPG/PNG/WebP</div>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-300">Scalability</div>
-                  <div className="mt-1 font-bold">Ready for future backend upgrade</div>
+                  <div className="text-xs text-slate-300">Live updates</div>
+                  <div className="mt-1 font-bold">Auto-refresh every 60 seconds</div>
                 </div>
-              </div>
-
-              <div className="mt-4 text-xs text-slate-400">
-                Tip: Keep your hero videos and product covers compressed for faster first-load on mobile.
               </div>
             </div>
           </div>
@@ -73,28 +67,20 @@ export function Home() {
       </section>
 
       <section className="container-pad py-14">
-        <SectionTitle
-          title="Built-in essentials"
-          subtitle="Everything you typically need for a professional portfolio + digital store—already included."
-        />
+        <SectionTitle title="How uploads map to the site" subtitle="Use consistent file names so thumbnails pair automatically." />
         <div className="grid gap-4 md:grid-cols-3">
           <div className="card p-5">
-            <div className="text-sm font-extrabold">Email-link sign-in</div>
-            <p className="mt-2 text-sm text-slate-300">Users receive a secure verification link in email without OTP codes.</p>
+            <div className="text-sm font-extrabold">Gallery tab</div>
+            <p className="mt-2 text-sm text-slate-300">Any image in <span className="badge">images/</span> appears as a gallery card.</p>
           </div>
           <div className="card p-5">
-            <div className="text-sm font-extrabold">Content moderation</div>
-            <p className="mt-2 text-sm text-slate-300">Every item has a <span className="badge">visible</span> flag for draft-first publishing.</p>
+            <div className="text-sm font-extrabold">Videos tab</div>
+            <p className="mt-2 text-sm text-slate-300">Any video in <span className="badge">videos/</span> appears in the video grid.</p>
           </div>
           <div className="card p-5">
-            <div className="text-sm font-extrabold">SEO basics</div>
-            <p className="mt-2 text-sm text-slate-300">Clean routes and performant navigation for better indexing and usability.</p>
+            <div className="text-sm font-extrabold">Thumbnail pairing</div>
+            <p className="mt-2 text-sm text-slate-300">A thumbnail in <span className="badge">thumbnails/</span> with the same base filename is linked automatically.</p>
           </div>
-        </div>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link className="btn-primary" to="/login">Open Login</Link>
-          <Link className="btn-ghost" to="/admin">Admin (requires your UID)</Link>
         </div>
       </section>
     </div>
