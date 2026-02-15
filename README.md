@@ -1,111 +1,44 @@
-# VisualCraft Showroom (GitHub Pages + Firebase)
+# VisualCraft Showroom
 
-A production-ready portfolio + shop:
-- Public site: videos, gallery (images), 3D store with filters + 3D preview
-- Auth: Email link sign-in (verification via link, no OTP)
-- Admin: upload/manage items (videos, images, 3D models) — locked to a single admin UID
-- Storage: Firebase Storage (free tier available)
-- Payments: **no server required** — use Stripe/PayPal/Payoneer **payment links** per product
+A lightweight portfolio site that automatically loads media from Cloudflare R2.
 
-## Tech
-- Vite + React + TypeScript
-- Tailwind CSS
-- Firebase (Auth + Firestore + Storage)
-- `<model-viewer>` for 3D preview (GLB/GLTF)
+## What it does
 
-## 1) Setup Firebase
-You already have:
-- Firestore rules in `firebase/firestore.rules`
-- Firebase config in `src/lib/firebase.ts`
+- **Videos tab** reads files from `videos/` in your R2 bucket.
+- **Gallery tab** reads files from `images/` in your R2 bucket.
+- **Thumbnails** are read from `thumbnails/` and matched to videos by filename.
+- Supports auto-refresh polling so new uploads appear automatically.
+- Supports selectable video quality when files are named like `name-720p.mp4`, `name-1080p.mp4`.
 
-### Firestore collections
-This app uses:
-- `videos` (video portfolio)
-- `models` (both 3D models and image products via `kind` field)
+## Cloudflare endpoints
 
-#### `videos` document shape (example)
-```json
-{
-  "title": "Showreel 2026",
-  "description": "Motion graphics + 3D",
-  "url": "https://...mp4",
-  "thumbUrl": "https://...jpg",
-  "visible": true,
-  "createdAt": "serverTimestamp"
-}
-```
+- Worker API base: `https://visualcraft-assets-api.abdulmelikdilshad.workers.dev`
+- R2 public base: `https://pub-d7314f34e7644251a2d185d6b6bac405.r2.dev`
 
-#### `models` document shape (example)
-```json
-{
-  "kind": "3d", // "3d" or "image"
-  "title": "Sci‑Fi Crate",
-  "description": "Game‑ready GLB + textures",
-  "tags": ["scifi", "crate"],
-  "category": "Props",
-  "isFree": false,
-  "priceUSD": 9.99,
-  "fileUrl": "https://...glb",      // required for kind:"3d"
-  "posterUrl": "https://...jpg",    // recommended
-  "imageUrl": "https://...jpg",     // required for kind:"image"
-  "stripeLink": "https://buy.stripe.com/....",  // optional
-  "paypalLink": "https://www.paypal.com/....",  // optional
-  "payoneerLink": "https://....",                // optional (invoice/request link)
-  "visible": true,
-  "createdAt": "serverTimestamp"
-}
-```
+## Folder structure in R2
 
-## 2) Configure allowed email-link URL
-In Firebase Console:
-- Authentication → Sign-in method → Email/Password → enable **Email link (passwordless sign-in)**
-- Authorized domains: add your GitHub Pages domain
+- `images/`
+- `videos/`
+- `thumbnails/`
 
-The app sends email-link sign-in with `continueUrl` = your site origin (or `VITE_APP_URL` if set).
+## Thumbnail matching
 
-## 3) Run locally
+Use the same base filename:
+
+- `videos/demo-1080p.mp4`
+- `videos/demo-720p.mp4`
+- `thumbnails/demo.jpg`
+
+## Local development
+
 ```bash
 npm install
 npm run dev
 ```
 
-## 4) Deploy to GitHub Pages
-This project supports GitHub Pages using Vite `base` path.
+## Build
 
-### Option A (recommended): GitHub Actions
-- Set repo name (example): `visualcraft-showroom`
-- In GitHub repo → Settings → Pages:
-  - Source: **GitHub Actions**
-- Push to `main`, the workflow will build & deploy.
-
-If your repo is served at:
-`https://USERNAME.github.io/REPO/`
-set `VITE_BASE=/REPO/` in GitHub Actions (already in workflow template).
-
-### Option B: Manual
 ```bash
 npm run build
-# upload dist/ to gh-pages branch
+npm run preview
 ```
-
-## 5) Admin access
-Admin is locked to this UID:
-`DHmPOZd7wzUn0565vhkVZDcoyum2`
-
-Change it in:
-- `src/lib/constants.ts`
-- `firebase/firestore.rules`
-
-## Notes on payments (serverless)
-GitHub Pages cannot run a backend.
-Best approach:
-- Create **Stripe Payment Links** (or a product checkout link)
-- Create PayPal checkout links / buttons
-- For Payoneer, use an invoice/request link (or provide "Contact to Pay")
-
-Paste these links into each product via the Admin panel.
-
----
-
-If you want “automatic unlock + download after payment”, you’ll need a backend (Cloud Functions).
-This project is structured so you can add that later without rewriting the UI.

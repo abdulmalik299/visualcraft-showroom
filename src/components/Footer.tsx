@@ -5,7 +5,7 @@ export function Footer() {
         <div>
           <div className="text-sm font-extrabold">VisualCraft</div>
           <p className="mt-2 text-sm text-slate-300">
-            Motion design, 3D modeling, product animation, and a curated store of production-ready 3D assets.
+            Video and image portfolio powered by Cloudflare R2.
           </p>
         </div>
 
