@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SectionTitle } from "../components/SectionTitle";
 import { Input } from "../components/ui/Input";
 import { Chip } from "../components/ui/Chip";
@@ -11,6 +11,12 @@ import { listR2Objects, type R2Object } from "../lib/r2";
 import { CopyLinkIcon, ExpandIcon } from "../components/icons";
 
 type Row = { item: R2Object; title: string; tags: string[]; category: string };
+type PointerInfo = { x: number; y: number };
+
+const MIN_SCALE = 1;
+const MAX_SCALE = 5;
+
+const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
 export function Gallery() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -20,7 +26,15 @@ export function Gallery() {
   const [active, setActive] = useState<number | null>(null);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isAnimating, setIsAnimating] = useState(false);
   const [toast, setToast] = useState<{ open: boolean; text: string; kind: "info" | "ok" | "err" }>({ open: false, text: "", kind: "info" });
+
+  const wheelTargetRef = useRef<HTMLImageElement | null>(null);
+  const pointers = useRef<Map<number, PointerInfo>>(new Map());
+  const pinchDistance = useRef<number | null>(null);
+  const lastTap = useRef(0);
+  const dragVelocity = useRef({ x: 0, y: 0 });
+  const inertiaFrame = useRef<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -71,12 +85,15 @@ export function Gallery() {
   const resetTransform = () => {
     setScale(1);
     setOffset({ x: 0, y: 0 });
+    dragVelocity.current = { x: 0, y: 0 };
   };
 
   const nav = (dir: 1 | -1) => {
     if (active == null || filtered.length === 0) return;
+    setIsAnimating(true);
     setActive((active + dir + filtered.length) % filtered.length);
     resetTransform();
+    window.setTimeout(() => setIsAnimating(false), 250);
   };
 
   useEffect(() => {
@@ -85,10 +102,27 @@ export function Gallery() {
       if (event.key === "Escape") setActive(null);
       if (event.key === "ArrowRight") nav(1);
       if (event.key === "ArrowLeft") nav(-1);
+      if (event.key === "+") setScale((s) => clamp(s + 0.2, MIN_SCALE, MAX_SCALE));
+      if (event.key === "-") setScale((s) => clamp(s - 0.2, MIN_SCALE, MAX_SCALE));
+      if (event.key.toLowerCase() === "z") resetTransform();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [active, filtered.length]);
+
+  useEffect(() => {
+    const node = wheelTargetRef.current;
+    if (!node) return;
+
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const direction = event.deltaY < 0 ? 0.22 : -0.22;
+      setScale((s) => clamp(s + direction, MIN_SCALE, MAX_SCALE));
+    };
+
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => node.removeEventListener("wheel", onWheel);
+  }, [activeItem?.item.key]);
 
   const copyLink = async () => {
     if (!activeItem) return;
@@ -100,11 +134,23 @@ export function Gallery() {
     }
   };
 
+  const applyInertia = () => {
+    if (inertiaFrame.current) window.cancelAnimationFrame(inertiaFrame.current);
+    const tick = () => {
+      dragVelocity.current.x *= 0.92;
+      dragVelocity.current.y *= 0.92;
+      if (Math.abs(dragVelocity.current.x) < 0.2 && Math.abs(dragVelocity.current.y) < 0.2) return;
+      setOffset((prev) => ({ x: prev.x + dragVelocity.current.x, y: prev.y + dragVelocity.current.y }));
+      inertiaFrame.current = window.requestAnimationFrame(tick);
+    };
+    inertiaFrame.current = window.requestAnimationFrame(tick);
+  };
+
   return (
     <div className="shell section-gap">
       <SectionTitle
         title="Gallery"
-        subtitle="A premium archive of composition and light."
+        subtitle="Filter, search, and explore every crafted frame in real time."
         right={<Input id="gallery-search" name="gallery-search" className="w-full md:w-80" placeholder="Search frames" value={q} onChange={(e) => setQ(e.target.value)} />}
       />
 
@@ -120,7 +166,7 @@ export function Gallery() {
         <div className="columns-1 gap-5 space-y-5 sm:columns-2 xl:columns-3">
           {filtered.map((row, idx) => (
             <button key={row.item.key} type="button" className="group relative block w-full break-inside-avoid overflow-hidden rounded-3xl border border-white/15 bg-white/[0.03] text-left" onClick={() => setActive(idx)}>
-              <img src={row.item.url} alt={row.title} loading="lazy" decoding="async" className="w-full object-cover transition duration-500 group-hover:scale-[1.02]" />
+              <img src={row.item.url} alt={row.title} loading="lazy" decoding="async" className="w-full object-cover transition duration-500 group-hover:scale-[1.04]" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent opacity-0 transition group-hover:opacity-100" />
               <div className="absolute inset-x-0 bottom-0 p-4 opacity-0 transition group-hover:opacity-100"><p className="text-lg font-medium">{row.title}</p></div>
             </button>
@@ -130,7 +176,26 @@ export function Gallery() {
 
       <Modal open={!!activeItem} onClose={() => setActive(null)} title="Artwork viewer" className="max-w-6xl">
         {activeItem ? (
-          <div className="flex h-[88vh] flex-col gap-4 p-4 md:p-6">
+          <div className="flex h-[88vh] flex-col gap-4 p-4 md:p-6" onTouchStart={(event) => {
+            const now = Date.now();
+            if (now - lastTap.current < 260) {
+              setScale((s) => (s > 1 ? 1 : 2.2));
+            }
+            lastTap.current = now;
+            if (event.touches.length === 2) {
+              const [a, b] = [event.touches[0], event.touches[1]];
+              pinchDistance.current = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+            }
+          }} onTouchMove={(event) => {
+            if (event.touches.length !== 2 || pinchDistance.current == null) return;
+            const [a, b] = [event.touches[0], event.touches[1]];
+            const nextDistance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+            const delta = (nextDistance - pinchDistance.current) * 0.01;
+            pinchDistance.current = nextDistance;
+            setScale((s) => clamp(s + delta, MIN_SCALE, MAX_SCALE));
+          }} onTouchEnd={() => {
+            pinchDistance.current = null;
+          }}>
             <div className="flex flex-wrap items-center justify-between gap-3 pr-20">
               <div><h3 className="text-xl font-medium">{activeItem.title}</h3><p className="mt-1 text-sm text-slate-400">{activeItem.tags.join(" · ") || "untagged"}</p></div>
               <div className="flex flex-wrap gap-2">
@@ -141,32 +206,36 @@ export function Gallery() {
 
             <div className="relative flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black/40 backdrop-blur-xl">
               <img
+                ref={wheelTargetRef}
                 src={activeItem.item.url}
                 alt={activeItem.title}
-                className="h-full w-full cursor-grab select-none object-contain"
-                style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transition: "transform 180ms ease" }}
+                className={isAnimating ? "h-full w-full cursor-grab select-none object-contain viewer-image is-switching" : "h-full w-full cursor-grab select-none object-contain viewer-image"}
+                style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
+                onPointerDown={(event) => {
+                  pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+                  (event.currentTarget as HTMLImageElement).setPointerCapture(event.pointerId);
+                  if (inertiaFrame.current) window.cancelAnimationFrame(inertiaFrame.current);
+                }}
+                onPointerMove={(event) => {
+                  const start = pointers.current.get(event.pointerId);
+                  if (!start || pointers.current.size > 1) return;
+                  const dx = event.clientX - start.x;
+                  const dy = event.clientY - start.y;
+                  dragVelocity.current = { x: dx * 0.3, y: dy * 0.3 };
+                  setOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+                  pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+                }}
+                onPointerUp={(event) => {
+                  pointers.current.delete(event.pointerId);
+                  if (pointers.current.size === 0) applyInertia();
+                }}
                 onDoubleClick={() => setScale((s) => (s > 1 ? 1 : 2.2))}
-                onWheel={(e) => {
-                  e.preventDefault();
-                  setScale((s) => Math.min(4, Math.max(1, s + (e.deltaY < 0 ? 0.2 : -0.2))));
-                }}
-                onMouseDown={(e) => {
-                  const startX = e.clientX - offset.x;
-                  const startY = e.clientY - offset.y;
-                  const move = (ev: MouseEvent) => setOffset({ x: ev.clientX - startX, y: ev.clientY - startY });
-                  const up = () => {
-                    window.removeEventListener("mousemove", move);
-                    window.removeEventListener("mouseup", up);
-                  };
-                  window.addEventListener("mousemove", move);
-                  window.addEventListener("mouseup", up);
-                }}
               />
             </div>
 
             <div className="flex items-center justify-between gap-2">
               <button type="button" className="btn btn-ghost" onClick={() => nav(-1)}>← Previous</button>
-              <div className="flex gap-2"><button type="button" className="btn btn-ghost" onClick={() => setScale((s) => Math.min(4, s + 0.2))}>Zoom +</button><button type="button" className="btn btn-ghost" onClick={() => setScale((s) => Math.max(1, s - 0.2))}>Zoom −</button></div>
+              <div className="flex gap-2"><button type="button" className="btn btn-ghost" onClick={() => setScale((s) => clamp(s + 0.2, MIN_SCALE, MAX_SCALE))}>Zoom +</button><button type="button" className="btn btn-ghost" onClick={() => setScale((s) => clamp(s - 0.2, MIN_SCALE, MAX_SCALE))}>Zoom −</button></div>
               <button type="button" className="btn btn-ghost" onClick={() => nav(1)}>Next →</button>
             </div>
           </div>
