@@ -1,87 +1,168 @@
 import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { SectionTitle } from "../components/SectionTitle";
+import { Card } from "../components/ui/Card";
+import { listR2Objects, type R2Object } from "../lib/r2";
+import { humanizeName } from "../lib/media";
 
-const highlights = [
-  { title: "Live R2 gallery", text: "Images load directly from your Cloudflare R2 images/ folder." },
-  { title: "Auto video discovery", text: "New videos appear automatically from videos/ with matching thumbnails/." },
-  { title: "Multiple quality", text: "If you upload 720p/1080p variants, visitors can choose playback quality." },
-  { title: "Fast playback", text: "Metadata preloading, poster-first rendering, and lightweight cards for speed." }
+type FeaturedItem = {
+  id: string;
+  title: string;
+  url: string;
+  type: "image" | "video";
+  poster?: string;
+};
+
+const services = [
+  { title: "Brand Visual Design", text: "Identity systems, logos, and visual storytelling built for modern brands." },
+  { title: "Product Visualization", text: "Premium stills and short-form loops for launches, ads, and social campaigns." },
+  { title: "Motion Direction", text: "Cinematic motion pieces with pacing, texture, and intentional mood." },
+  { title: "UI Presentation Frames", text: "Polished interface stills for apps, landing pages, and pitch decks." }
 ];
 
+function buildFeatured(images: R2Object[], videos: R2Object[], thumbs: R2Object[]) {
+  const posterByBase = new Map(thumbs.map((thumb) => [thumb.baseName, thumb.url]));
+  const merged: Array<{ item: R2Object; type: "image" | "video" }> = [
+    ...images.map((item) => ({ item, type: "image" as const })),
+    ...videos.map((item) => ({ item, type: "video" as const }))
+  ];
+
+  return merged
+    .sort((a, b) => {
+      const at = a.item.lastModified ? Date.parse(a.item.lastModified) : Number.NaN;
+      const bt = b.item.lastModified ? Date.parse(b.item.lastModified) : Number.NaN;
+      if (!Number.isNaN(at) && !Number.isNaN(bt) && at !== bt) return bt - at;
+      return b.item.name.localeCompare(a.item.name);
+    })
+    .slice(0, 6)
+    .map(({ item, type }) => ({
+      id: item.key,
+      title: humanizeName(item.baseName),
+      type,
+      url: item.url,
+      poster: type === "video" ? posterByBase.get(item.baseName) : undefined
+    }));
+}
+
 export function Home() {
+  const [featured, setFeatured] = useState<FeaturedItem[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const load = async () => {
+      const [images, videos, thumbs] = await Promise.all([
+        listR2Objects("images/", ["jpg", "jpeg", "png", "webp", "avif", "gif"]),
+        listR2Objects("videos/", ["mp4", "webm", "mov", "m4v"]),
+        listR2Objects("thumbnails/", ["jpg", "jpeg", "png", "webp", "avif"])
+      ]);
+      if (!mounted) return;
+      setFeatured(buildFeatured(images, videos, thumbs));
+    };
+
+    load().catch(() => undefined);
+    const interval = window.setInterval(() => {
+      load().catch(() => undefined);
+    }, 60_000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  const previewStrip = useMemo(() => featured.slice(0, 4), [featured]);
+
   return (
     <div>
       <section className="relative overflow-hidden border-b border-white/10">
-        <div className="absolute inset-0 bg-[radial-gradient(600px_circle_at_20%_10%,rgba(56,189,248,0.25),transparent_45%),radial-gradient(600px_circle_at_90%_30%,rgba(217,70,239,0.25),transparent_45%)]" />
-        <div className="container-pad relative py-16">
-          <div className="grid gap-10 md:grid-cols-2 md:items-center">
+        <div className="absolute inset-0 bg-[radial-gradient(620px_circle_at_15%_5%,rgba(56,189,248,0.28),transparent_45%),radial-gradient(520px_circle_at_85%_25%,rgba(217,70,239,0.2),transparent_45%)]" />
+        <div className="container-pad relative py-16 md:py-20">
+          <div className="grid items-center gap-8 md:grid-cols-[1.2fr_1fr]">
             <div>
-              <div className="badge">Cloudflare R2 Powered</div>
-              <h1 className="mt-4 text-4xl font-extrabold tracking-tight md:text-5xl">
-                A clean digital showroom for your videos and image work.
-              </h1>
-              <p className="mt-4 text-base text-slate-300">
-                Upload files into R2 and this website automatically reflects your latest media in the Videos and Gallery tabs.
+              <span className="badge">Visual Portfolio</span>
+              <h1 className="mt-4 text-4xl font-bold tracking-tight md:text-6xl">Crafting visual stories with precision and atmosphere.</h1>
+              <p className="mt-5 max-w-xl text-base text-slate-300 md:text-lg">
+                I design cinematic frames, brand visuals, and polished motion pieces that make products and ideas feel timeless.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link to="/videos" className="btn-primary">Watch Videos</Link>
-                <Link to="/gallery" className="btn-ghost">Image Gallery</Link>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link to="/videos" className="btn-primary btn">Explore Videos</Link>
+                <Link to="/gallery" className="btn-secondary btn">View Gallery</Link>
               </div>
+            </div>
 
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                {highlights.map((item) => (
-                  <div key={item.title} className="card p-4">
-                    <div className="text-sm font-bold">{item.title}</div>
-                    <div className="mt-1 text-sm text-slate-300">{item.text}</div>
+            <Card className="p-4 md:p-5">
+              <p className="label">Featured Preview</p>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {previewStrip.map((item) => (
+                  <div key={item.id} className="overflow-hidden rounded-xl border border-white/10">
+                    {item.type === "image" ? (
+                      <img src={item.url} alt={item.title} loading="lazy" decoding="async" className="h-28 w-full object-cover" />
+                    ) : (
+                      <img
+                        src={item.poster ?? item.url}
+                        alt={`${item.title} preview`}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-28 w-full object-cover"
+                      />
+                    )}
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div className="card p-5">
-              <div className="aspect-[16/10] overflow-hidden rounded-xl border border-white/10 bg-black/30">
-                <div className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,rgba(56,189,248,0.35),transparent_40%),radial-gradient(circle_at_70%_55%,rgba(217,70,239,0.25),transparent_45%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0))]" />
-              </div>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-300">Folder sync</div>
-                  <div className="mt-1 font-bold">images/ videos/ thumbnails/</div>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-300">Security</div>
-                  <div className="mt-1 font-bold">No visitor accounts required</div>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-300">Media support</div>
-                  <div className="mt-1 font-bold">MP4/WebM + JPG/PNG/WebP</div>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-300">Live updates</div>
-                  <div className="mt-1 font-bold">Auto-refresh every 60 seconds</div>
-                </div>
-              </div>
-            </div>
+            </Card>
           </div>
         </div>
       </section>
 
       <section className="container-pad py-14">
-        <SectionTitle title="How uploads map to the site" subtitle="Use consistent file names so thumbnails pair automatically." />
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="card p-5">
-            <div className="text-sm font-extrabold">Gallery tab</div>
-            <p className="mt-2 text-sm text-slate-300">Any image in <span className="badge">images/</span> appears as a gallery card.</p>
-          </div>
-          <div className="card p-5">
-            <div className="text-sm font-extrabold">Videos tab</div>
-            <p className="mt-2 text-sm text-slate-300">Any video in <span className="badge">videos/</span> appears in the video grid.</p>
-          </div>
-          <div className="card p-5">
-            <div className="text-sm font-extrabold">Thumbnail pairing</div>
-            <p className="mt-2 text-sm text-slate-300">A thumbnail in <span className="badge">thumbnails/</span> with the same base filename is linked automatically.</p>
-          </div>
+        <SectionTitle
+          title="Featured Work"
+          subtitle="Automatically curated from the latest uploads so your newest visuals are always front and center."
+        />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {featured.map((item) => (
+            <Card key={item.id} className="overflow-hidden">
+              {item.type === "image" ? (
+                <img src={item.url} alt={item.title} loading="lazy" decoding="async" className="h-52 w-full object-cover" />
+              ) : (
+                <img src={item.poster ?? item.url} alt={item.title} loading="lazy" decoding="async" className="h-52 w-full object-cover" />
+              )}
+              <div className="p-4">
+                <p className="text-sm text-slate-400">{item.type === "video" ? "Video" : "Image"}</p>
+                <h3 className="mt-1 text-lg font-semibold">{item.title}</h3>
+              </div>
+            </Card>
+          ))}
         </div>
+      </section>
+
+      <section className="container-pad py-8">
+        <SectionTitle title="Services" subtitle="Flexible collaborations for campaigns, launches, and portfolio-ready visual systems." />
+        <div className="grid gap-4 md:grid-cols-2">
+          {services.map((service) => (
+            <Card key={service.title} className="p-5">
+              <h3 className="text-lg font-semibold">{service.title}</h3>
+              <p className="mt-2 text-sm text-slate-300">{service.text}</p>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section className="container-pad py-14">
+        <Card className="p-7 md:p-9">
+          <p className="label">Let’s collaborate</p>
+          <h2 className="mt-2 text-2xl font-bold md:text-3xl">Ready to build something memorable?</h2>
+          <p className="mt-3 max-w-2xl text-sm text-slate-300 md:text-base">
+            Available for selected commercial, editorial, and product-focused projects. Reach out through social channels or email to discuss scope.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a className="btn btn-primary" href="mailto:artist@example.com">Email</a>
+            <a className="btn btn-ghost" href="https://instagram.com/" target="_blank" rel="noreferrer">Instagram</a>
+            <a className="btn btn-ghost" href="https://behance.net/" target="_blank" rel="noreferrer">Behance</a>
+            <a className="btn btn-ghost" href="https://linkedin.com/" target="_blank" rel="noreferrer">LinkedIn</a>
+          </div>
+        </Card>
       </section>
     </div>
   );

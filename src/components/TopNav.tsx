@@ -41,7 +41,7 @@ export function TopNav() {
         </nav>
 
         <button
-          className="btn-ghost px-3 md:hidden"
+          className="btn btn-ghost px-3 md:hidden"
           type="button"
           aria-expanded={open}
           aria-label="Toggle navigation menu"
