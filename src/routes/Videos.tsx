@@ -120,14 +120,19 @@ export function Videos() {
       localStorage.setItem(resumeKey(activeCard.id), `${player.currentTime}`);
     };
 
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+
     player.addEventListener("loadedmetadata", onLoaded);
     player.addEventListener("timeupdate", onTime);
-    player.addEventListener("play", () => setPlaying(true));
-    player.addEventListener("pause", () => setPlaying(false));
+    player.addEventListener("play", onPlay);
+    player.addEventListener("pause", onPause);
 
     return () => {
       player.removeEventListener("loadedmetadata", onLoaded);
       player.removeEventListener("timeupdate", onTime);
+      player.removeEventListener("play", onPlay);
+      player.removeEventListener("pause", onPause);
     };
   }, [selectedUrl, activeCard?.id, playbackRate]);
 
@@ -137,21 +142,19 @@ export function Videos() {
       const player = videoRef.current;
       if (!player) return;
       if (event.key === "Escape") setActiveId(null);
-      if (event.key === " ") {
+      if ([" ", "k"].includes(event.key)) {
         event.preventDefault();
         if (player.paused) player.play().catch(() => undefined);
         else player.pause();
       }
-      if (event.key === "ArrowRight") player.currentTime += 5;
-      if (event.key === "ArrowLeft") player.currentTime -= 5;
+      if (["l", "ArrowRight"].includes(event.key)) player.currentTime += 5;
+      if (["j", "ArrowLeft"].includes(event.key)) player.currentTime -= 5;
       if (event.key.toLowerCase() === "m") {
         player.muted = !player.muted;
         setMuted(player.muted);
       }
-      if (event.key.toLowerCase() === "f") {
-        if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
-        else player.requestFullscreen().catch(() => undefined);
-      }
+      if (event.key.toLowerCase() === "f") player.requestFullscreen().catch(() => undefined);
+      if (event.key.toLowerCase() === "p") requestPiP();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -174,7 +177,7 @@ export function Videos() {
     <div className="shell section-gap">
       <SectionTitle
         title="Films"
-        subtitle="Theater playback with precision controls."
+        subtitle="Cinematic cards with modern keyboard-controlled playback."
         right={<Input id="video-search" name="video-search" className="w-full md:w-80" placeholder="Search films" value={q} onChange={(e) => setQ(e.target.value)} />}
       />
 
@@ -187,7 +190,7 @@ export function Videos() {
           {filtered.map((video) => (
             <button key={video.id} type="button" className="text-left" onClick={() => setActiveId(video.id)}>
               <Card className="group overflow-hidden" interactive>
-                {video.poster ? <img src={video.poster} alt={video.title} className="h-52 w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" /> : <Skeleton className="h-52 w-full" />}
+                {video.poster ? <img src={video.poster} alt={video.title} className="video-poster h-52 w-full object-cover" loading="lazy" /> : <Skeleton className="h-52 w-full" />}
                 <div className="space-y-1 p-4"><h3 className="text-lg font-medium">{video.title}</h3><p className="text-sm text-slate-400">{video.mp4Options.length > 1 ? "Multiple renditions" : "Original"}</p></div>
               </Card>
             </button>
@@ -203,7 +206,7 @@ export function Videos() {
               {!metaReady ? <Skeleton className="absolute inset-0 h-full w-full rounded-none bg-gradient-to-r from-white/5 via-white/15 to-white/5" /> : null}
               <video ref={videoRef} className="h-full min-h-[260px] w-full" playsInline preload="metadata" poster={activeCard.poster} />
 
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-3">
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3">
                 <div className="relative h-2 rounded-full bg-white/20">
                   <div className="absolute inset-y-0 left-0 rounded-full bg-white/30" style={{ width: `${duration ? (buffered / duration) * 100 : 0}%` }} />
                   <div className="absolute inset-y-0 left-0 rounded-full bg-indigo-300" style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }} />

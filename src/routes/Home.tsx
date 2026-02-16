@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SectionTitle } from "../components/SectionTitle";
 import { Card } from "../components/ui/Card";
 import { listR2Objects, type R2Object } from "../lib/r2";
@@ -9,6 +9,7 @@ import { SectionDivider } from "../components/artwork/SectionDivider";
 import { ArrowIcon, FilmIcon, GalleryIcon } from "../components/icons";
 
 const notes = ["Direction", "Texture", "Atmosphere", "Motion"];
+const taglines = ["Fluid Motion Visuals", "Tactile Frame Stories", "Cinematic Product Poetry", "Modern Light Narratives"];
 
 type FeaturedItem = {
   id: string;
@@ -16,6 +17,7 @@ type FeaturedItem = {
   url: string;
   type: "image" | "video";
   poster?: string;
+  category: string;
 };
 
 function buildFeatured(images: R2Object[], videos: R2Object[], thumbs: R2Object[]) {
@@ -32,18 +34,22 @@ function buildFeatured(images: R2Object[], videos: R2Object[], thumbs: R2Object[
       if (!Number.isNaN(at) && !Number.isNaN(bt) && at !== bt) return bt - at;
       return b.item.name.localeCompare(a.item.name);
     })
-    .slice(0, 6)
+    .slice(0, 10)
     .map(({ item, type }) => ({
       id: item.key,
       title: humanizeName(item.baseName),
       type,
       url: item.url,
+      category: type === "video" ? "Film" : "Frame",
       poster: type === "video" ? posterByBase.get(item.baseName) : undefined
     }));
 }
 
 export function Home() {
   const [featured, setFeatured] = useState<FeaturedItem[]>([]);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [taglineIdx, setTaglineIdx] = useState(0);
+  const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -68,6 +74,26 @@ export function Home() {
 
   const previewStrip = useMemo(() => featured.slice(0, 4), [featured]);
 
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setTaglineIdx((i) => (i + 1) % taglines.length);
+    }, 2800);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (featured.length < 2) return;
+    const id = window.setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % featured.length);
+    }, 4200);
+    return () => window.clearInterval(id);
+  }, [featured.length]);
+
+  const goSlide = (next: number) => {
+    if (featured.length === 0) return;
+    setActiveSlide((next + featured.length) % featured.length);
+  };
+
   return (
     <div>
       <section className="relative overflow-hidden border-b border-white/10">
@@ -81,9 +107,10 @@ export function Home() {
                 <br />
                 sculpted in light.
               </h1>
+              <p className="dynamic-tagline">{taglines[taglineIdx]}</p>
               <div className="flex flex-wrap gap-3">
-                <Link to="/gallery" className="btn btn-primary"><GalleryIcon className="h-4 w-4" /> Enter Gallery</Link>
-                <Link to="/videos" className="btn btn-secondary"><FilmIcon className="h-4 w-4" /> Watch Films</Link>
+                <Link to="/gallery" className="btn btn-primary magnetic-btn cta-pill"><GalleryIcon className="h-4 w-4" /> Explore Gallery</Link>
+                <Link to="/videos" className="btn btn-secondary magnetic-btn cta-pill"><FilmIcon className="h-4 w-4" /> Watch Films</Link>
               </div>
               <div className="flex flex-wrap gap-2 pt-2">
                 {notes.map((item) => <span key={item} className="badge">{item}</span>)}
@@ -106,10 +133,43 @@ export function Home() {
 
       <SectionDivider />
 
+      <section className="shell section-gap reveal-up">
+        <SectionTitle title="Featured Motion + Stills" subtitle="Autoplay carousel sourced from your R2 media stream." />
+        <div
+          className="carousel-shell"
+          onTouchStart={(event) => {
+            touchStartX.current = event.changedTouches[0]?.clientX ?? null;
+          }}
+          onTouchEnd={(event) => {
+            if (touchStartX.current == null) return;
+            const delta = (event.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
+            if (Math.abs(delta) > 48) goSlide(activeSlide + (delta < 0 ? 1 : -1));
+            touchStartX.current = null;
+          }}
+        >
+          <div className="carousel-track" style={{ transform: `translateX(-${activeSlide * 100}%)` }}>
+            {featured.map((item) => (
+              <article key={item.id} className="carousel-card">
+                <img src={item.type === "video" ? item.poster ?? item.url : item.url} alt={item.title} className="h-[360px] w-full object-cover" loading="lazy" />
+                <div className="carousel-overlay">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-300">{item.category}</p>
+                  <h3 className="text-2xl font-medium">{item.title}</h3>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="mt-4 flex justify-center gap-2">
+            {featured.map((item, idx) => (
+              <button key={item.id} type="button" className={idx === activeSlide ? "carousel-dot is-active" : "carousel-dot"} onClick={() => setActiveSlide(idx)} aria-label={`Go to featured slide ${idx + 1}`} />
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="shell section-gap">
         <SectionTitle title="Selected Work" subtitle="R2-driven stream, refreshed automatically." />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((item) => (
+          {featured.slice(0, 6).map((item) => (
             <Card key={item.id} className="group overflow-hidden reveal-up" interactive>
               <img
                 src={item.type === "video" ? item.poster ?? item.url : item.url}

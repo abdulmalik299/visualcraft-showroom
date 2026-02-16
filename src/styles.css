@@ -1,21 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: dark;
-  --studio-grad: linear-gradient(135deg, #68b6ff 0%, #7b5cff 100%);
+  --studio-grad: linear-gradient(135deg, #54dad3 0%, #7b5cff 100%);
 }
 
 * { border-color: rgba(255, 255, 255, 0.1); }
 
 body {
-  @apply min-h-screen bg-[#070b14] text-slate-100 antialiased;
+  @apply min-h-screen bg-[#040814] text-slate-100 antialiased;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif;
   background-image:
-    radial-gradient(1200px circle at 15% -10%, rgba(99, 102, 241, 0.22), transparent 52%),
-    radial-gradient(700px circle at 88% 7%, rgba(124, 58, 237, 0.18), transparent 56%),
-    linear-gradient(180deg, #060913, #090f1d 30%, #060913 100%);
+    radial-gradient(1200px circle at 15% -10%, rgba(28, 112, 181, 0.22), transparent 52%),
+    radial-gradient(700px circle at 88% 7%, rgba(124, 58, 237, 0.2), transparent 56%),
+    linear-gradient(180deg, #040814, #080f24 30%, #040814 100%),
+    repeating-radial-gradient(circle at 20% 20%, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 2px, transparent 8px);
 }
 
 body.blueprint-mode {
@@ -28,6 +31,7 @@ body.blueprint-mode {
 
 ::selection { background: rgba(147, 197, 253, 0.35); }
 a { text-decoration-thickness: 2px; }
+h1, h2, h3 { font-family: "Space Grotesk", Inter, sans-serif; }
 
 .shell { @apply mx-auto w-full max-w-[1280px] px-4 sm:px-6; }
 .glass { @apply rounded-3xl border border-white/15 bg-white/[0.06] shadow-soft backdrop-blur-xl; }
@@ -42,18 +46,24 @@ a { text-decoration-thickness: 2px; }
 .badge { @apply inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-slate-200; }
 .chip { @apply inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold transition; }
 .chip-idle { @apply border-white/15 bg-white/[0.03] text-slate-300 hover:bg-white/10; }
-.chip-active { @apply border-indigo-200/70 bg-indigo-200/20 text-indigo-50; }
+.chip-active { @apply border-teal-200/80 bg-teal-200/20 text-teal-50; }
 .section-gap { @apply py-14 md:py-20; }
 
 .nav-pill { @apply inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition; }
+.nav-underline { position: relative; }
+.nav-underline::after { content: ""; position: absolute; left: 1rem; right: 1rem; bottom: 2px; height: 1px; background: linear-gradient(90deg, #56d9d3, #7b5cff); transform: scaleX(0); transform-origin: center; transition: transform 320ms ease; }
+.nav-underline:hover::after, .nav-underline.is-active::after { transform: scaleX(1); }
 .icon-btn { @apply inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/20 text-slate-100 transition hover:bg-white/15; }
+
+.logo-reveal { transform: translateY(8px); opacity: 0.8; transition: transform 320ms ease, opacity 320ms ease; }
+.group:hover .logo-reveal { transform: translateY(0); opacity: 1; }
 
 .studio-icon {
   stroke: url(#studio-gradient);
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition: filter 240ms ease, stroke-dashoffset 360ms ease;
+  transition: filter 260ms ease, stroke-dashoffset 360ms ease;
   stroke-dasharray: 44;
   stroke-dashoffset: 0;
 }
@@ -64,13 +74,21 @@ a:hover .studio-icon,
   stroke-dashoffset: 44;
 }
 
+.magnetic-btn { transition: transform 300ms ease, box-shadow 300ms ease; }
+.magnetic-btn:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 0 24px rgba(90, 226, 214, 0.25); }
+.cta-pill { position: relative; overflow: hidden; }
+.cta-pill::before { content: ""; position: absolute; inset: 1px; border-radius: 999px; border: 1px solid rgba(134, 224, 219, 0.4); opacity: 0; transition: opacity 320ms ease; }
+.cta-pill:hover::before { opacity: 1; }
+.dynamic-tagline { color: rgba(175, 246, 236, 0.9); font-size: 1.125rem; letter-spacing: 0.08em; text-transform: uppercase; }
+
 .hero-portal {
   position: absolute;
   right: -140px;
   top: -80px;
   width: min(58vw, 730px);
-  opacity: 0.25;
+  opacity: 0.36;
   pointer-events: none;
+  transition: transform 300ms ease;
 }
 .portal-ring { fill: none; stroke: url(#portal-gradient); stroke-width: 1.8; }
 .portal-ring-thin { stroke-width: 1; opacity: 0.7; }
@@ -79,13 +97,29 @@ a:hover .studio-icon,
 .portal-breathe { animation: breathe 6s ease-in-out infinite; transform-origin: center; }
 .portal-spark { fill: none; stroke: rgba(156, 198, 255, 0.8); stroke-width: 1.4; stroke-dasharray: 190; animation: sparkDraw 2.6s ease; }
 
+.carousel-shell { overflow: hidden; }
+.carousel-track { display: flex; transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1); }
+.carousel-card { min-width: 100%; border-radius: 1.5rem; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); position: relative; }
+.carousel-overlay { position: absolute; inset: auto 0 0; padding: 1rem 1.25rem; background: linear-gradient(180deg, transparent, rgba(5,8,20,0.92)); opacity: 0; transition: opacity 320ms ease; }
+.carousel-card:hover .carousel-overlay { opacity: 1; }
+.carousel-dot { width: 8px; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.28); transition: all 260ms ease; }
+.carousel-dot.is-active { width: 22px; background: linear-gradient(90deg, #56d9d3, #7b5cff); }
+
 .section-divider { width: 100%; height: 64px; opacity: 0.75; }
 .divider-line { fill: none; stroke: rgba(136, 170, 255, 0.25); stroke-width: 1.4; stroke-linecap: round; stroke-dasharray: 1400; stroke-dashoffset: 1400; transition: stroke-dashoffset 1.1s ease; }
 .divider-line.is-visible { stroke-dashoffset: 0; }
 
-.footer-crest { position: absolute; right: max(3vw, 20px); top: 10px; width: 220px; opacity: 0.55; pointer-events: none; }
-.crest-mark,.crest-orbit { fill: none; stroke: rgba(144, 170, 255, 0.48); stroke-width: 1.4; }
+.footer-crest { position: absolute; right: max(3vw, 20px); top: 10px; width: 220px; opacity: 0.7; pointer-events: none; }
+.crest-mark,.crest-orbit { fill: none; stroke: rgba(107, 222, 219, 0.5); stroke-width: 1.4; }
 .crest-dot { fill: #8cb9ff; animation: orbitDot 10s linear infinite; transform-origin: 110px 60px; }
+.footer-link { color: rgb(148 163 184); transition: color 260ms ease, text-shadow 260ms ease; }
+.footer-link:hover { color: white; text-shadow: 0 0 12px rgba(89, 226, 214, 0.32); }
+
+.video-poster { transition: transform 360ms ease, filter 360ms ease; }
+.group:hover .video-poster { transform: scale(1.05) perspective(1000px) rotateX(2deg); filter: brightness(0.95) contrast(1.05); }
+
+.viewer-image { transition: transform 180ms ease; touch-action: none; }
+.viewer-image.is-switching { animation: fadeSlide 260ms ease; }
 
 .interactive-card {
   position: relative;
@@ -125,8 +159,8 @@ a:hover .studio-icon,
   inset: 0;
   z-index: 45;
   opacity: 0;
-  background: radial-gradient(circle at 50% 10%, rgba(102, 145, 255, 0.22), rgba(10, 15, 28, 0.82));
-  transition: opacity 220ms ease;
+  background: radial-gradient(circle at 50% 10%, rgba(79, 164, 255, 0.22), rgba(6, 8, 19, 0.88));
+  transition: opacity 300ms ease;
 }
 .route-fade-overlay.is-active { opacity: 1; }
 .cursor-halo {
@@ -145,7 +179,7 @@ a:hover .studio-icon,
 .reveal-up { opacity: 0; transform: translateY(22px); transition: opacity 560ms ease, transform 560ms ease; }
 .reveal-up.is-revealed { opacity: 1; transform: translateY(0); }
 
-.modal-panel { animation: popIn 220ms ease; }
+.modal-panel { animation: popIn 250ms ease; }
 
 :focus-visible { outline: 2px solid rgba(165, 180, 252, 0.85); outline-offset: 2px; }
 
@@ -154,6 +188,7 @@ a:hover .studio-icon,
 @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
 @keyframes sparkDraw { from { stroke-dashoffset: 190; opacity: 0; } 20% { opacity: 1; } to { stroke-dashoffset: 0; opacity: 0; } }
 @keyframes popIn { from { transform: translateY(10px) scale(0.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+@keyframes fadeSlide { from { opacity: 0; transform: translateY(4px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

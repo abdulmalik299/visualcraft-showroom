@@ -4,7 +4,7 @@ import { cx } from "../lib/utils";
 import { FilmIcon, GalleryIcon, LogoMark, ToggleStudioModeIcon } from "./icons";
 
 const items = [
-  { to: "/", label: "Home", icon: LogoMark },
+  { to: "/", label: "Home" },
   { to: "/videos", label: "Videos", icon: FilmIcon },
   { to: "/gallery", label: "Gallery", icon: GalleryIcon }
 ];
@@ -14,13 +14,13 @@ export function TopNav() {
   const [blueprint, setBlueprint] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#070b14]/65 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050914]/60 backdrop-blur-xl">
       <div className="shell flex h-16 items-center justify-between">
         <Link to="/" className="group flex items-center gap-3" onClick={() => setOpen(false)} aria-label="VisualCraft Home">
           <LogoMark className="h-10 w-10" title="VisualCraft logo" />
-          <div>
-            <p className="text-xs font-semibold tracking-[0.18em] text-slate-100">VISUALCRAFT</p>
-            <p className="text-[10px] uppercase tracking-[0.26em] text-slate-400">Constellation Studio</p>
+          <div className="overflow-hidden">
+            <p className="logo-reveal text-xs font-semibold tracking-[0.2em] text-slate-100">VISUALCRAFT</p>
+            <p className="logo-reveal delay-75 text-[10px] uppercase tracking-[0.28em] text-slate-400">Constellation Studio</p>
           </div>
         </Link>
 
@@ -32,17 +32,17 @@ export function TopNav() {
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  cx("nav-pill", isActive ? "bg-white/15 text-white" : "text-slate-300 hover:bg-white/10 hover:text-white")
+                  cx("nav-pill nav-underline", isActive ? "is-active text-white" : "text-slate-300 hover:text-white")
                 }
               >
-                <Icon className="h-4 w-4" aria-label={`${item.label} icon`} />
+                {Icon ? <Icon className="h-4 w-4" aria-label={`${item.label} icon`} /> : <span className="h-4 w-4" />}
                 {item.label}
               </NavLink>
             );
           })}
           <button
             type="button"
-            className="icon-btn"
+            className="icon-btn magnetic-btn"
             onClick={() => {
               const next = !blueprint;
               setBlueprint(next);
@@ -73,7 +73,7 @@ export function TopNav() {
                     cx("flex items-center gap-2 rounded-2xl px-3 py-2 text-sm", isActive ? "bg-white/15 text-white" : "text-slate-300 hover:bg-white/10")
                   }
                 >
-                  <Icon className="h-4 w-4" />
+                  {Icon ? <Icon className="h-4 w-4" /> : <span className="h-4 w-4" />}
                   {item.label}
                 </NavLink>
               );
