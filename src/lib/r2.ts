@@ -23,6 +23,14 @@ function normalizeMediaBaseName(name: string) {
   return name.replace(/[._-](\d{3,4})p$/i, "").trim().toLowerCase();
 }
 
+function deriveBaseName(normalizedKey: string, name: string, ext: string) {
+  if (ext === "m3u8" && /^master$/i.test(name)) {
+    const parent = normalizedKey.split("/").slice(-2, -1)[0];
+    if (parent) return normalizeMediaBaseName(parent);
+  }
+  return normalizeMediaBaseName(name);
+}
+
 function toR2Object(item: ParsedListItem): R2Object {
   const normalized = normalizeKey(item.key);
   const fileName = normalized.split("/").pop() ?? normalized;
@@ -39,7 +47,7 @@ function toR2Object(item: ParsedListItem): R2Object {
     url: `${R2_PUBLIC_BASE}/${encodedKey}`,
     name,
     ext,
-    baseName: normalizeMediaBaseName(name),
+    baseName: deriveBaseName(normalized, name, ext),
     lastModified: item.lastModified
   };
 }
@@ -164,6 +172,7 @@ export async function listR2Objects(prefix: string, extensions: string[]) {
 
   return rows
     .map(toR2Object)
+    .filter((obj) => !obj.key.endsWith("/"))
     .filter((obj) => allowed.has(obj.ext))
     .sort((a, b) => {
       const at = toTimestamp(a.lastModified);

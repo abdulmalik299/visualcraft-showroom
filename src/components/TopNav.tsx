@@ -3,70 +3,60 @@ import { Link, NavLink } from "react-router-dom";
 import { cx } from "../lib/utils";
 
 const items = [
-  { to: "/", label: "Home" },
-  { to: "/videos", label: "Videos" },
+  { to: "/", label: "Overview" },
+  { to: "/videos", label: "Films" },
   { to: "/gallery", label: "Gallery" }
 ];
 
 export function TopNav() {
   const [open, setOpen] = useState(false);
-  const closeMenu = () => setOpen(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/80 backdrop-blur">
-      <div className="container-pad flex h-16 items-center justify-between gap-3">
-        <Link to="/" className="flex items-center gap-3" onClick={closeMenu}>
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-sky-400 to-fuchsia-500" />
-          <div className="leading-tight">
-            <div className="text-sm font-extrabold tracking-wide">VisualCraft</div>
-            <div className="text-[11px] text-slate-300">Creative Showroom</div>
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#070b14]/75 backdrop-blur-xl">
+      <div className="shell flex h-16 items-center justify-between">
+        <Link to="/" className="group flex items-center gap-3" onClick={() => setOpen(false)}>
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-200 to-fuchsia-300 opacity-90 transition group-hover:scale-105" />
+          <div>
+            <p className="text-sm font-semibold tracking-[0.14em]">VISUALCRAFT</p>
+            <p className="text-[10px] uppercase tracking-[0.28em] text-slate-400">Showroom</p>
           </div>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
-          {items.map((it) => (
+          {items.map((item) => (
             <NavLink
-              key={it.to}
-              to={it.to}
+              key={item.to}
+              to={item.to}
               className={({ isActive }) =>
                 cx(
-                  "rounded-xl px-3 py-2 text-sm font-semibold transition",
-                  isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"
+                  "rounded-full px-4 py-2 text-sm transition",
+                  isActive ? "bg-white/15 text-white" : "text-slate-300 hover:bg-white/10 hover:text-white"
                 )
               }
             >
-              {it.label}
+              {item.label}
             </NavLink>
           ))}
         </nav>
 
-        <button
-          className="btn btn-ghost px-3 md:hidden"
-          type="button"
-          aria-expanded={open}
-          aria-label="Toggle navigation menu"
-          onClick={() => setOpen((v) => !v)}
-        >
+        <button className="btn btn-ghost px-4 py-2 md:hidden" onClick={() => setOpen((v) => !v)} type="button">
           {open ? "Close" : "Menu"}
         </button>
       </div>
 
       {open ? (
-        <div className="container-pad pb-4 md:hidden">
+        <div className="shell pb-4 md:hidden">
           <div className="card space-y-2 p-3">
-            {items.map((it) => (
+            {items.map((item) => (
               <NavLink
-                key={it.to}
-                to={it.to}
-                onClick={closeMenu}
+                key={item.to}
+                to={item.to}
+                onClick={() => setOpen(false)}
                 className={({ isActive }) =>
-                  cx(
-                    "block rounded-xl px-3 py-2 text-sm font-semibold transition",
-                    isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"
-                  )
+                  cx("block rounded-2xl px-3 py-2 text-sm", isActive ? "bg-white/15 text-white" : "text-slate-300 hover:bg-white/10")
                 }
               >
-                {it.label}
+                {item.label}
               </NavLink>
             ))}
           </div>

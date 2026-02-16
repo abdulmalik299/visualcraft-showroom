@@ -1,0 +1,5 @@
+import { cx } from "../../lib/utils";
+
+export function Skeleton({ className }: { className?: string }) {
+  return <div className={cx("animate-pulse rounded-2xl bg-white/10", className)} aria-hidden="true" />;
+}
