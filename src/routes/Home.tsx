@@ -4,7 +4,11 @@ import { SectionTitle } from "../components/SectionTitle";
 import { Card } from "../components/ui/Card";
 import { listR2Objects, type R2Object } from "../lib/r2";
 import { humanizeName } from "../lib/media";
-import { NetworkField } from "../components/NetworkField";
+import { HeroPortal } from "../components/artwork/HeroPortal";
+import { SectionDivider } from "../components/artwork/SectionDivider";
+import { ArrowIcon, FilmIcon, GalleryIcon } from "../components/icons";
+
+const notes = ["Direction", "Texture", "Atmosphere", "Motion"];
 
 type FeaturedItem = {
   id: string;
@@ -13,8 +17,6 @@ type FeaturedItem = {
   type: "image" | "video";
   poster?: string;
 };
-
-const notes = ["Direction", "Motion", "Still Life", "Brand Frames"];
 
 function buildFeatured(images: R2Object[], videos: R2Object[], thumbs: R2Object[]) {
   const posterByBase = new Map(thumbs.map((thumb) => [thumb.baseName, thumb.url]));
@@ -57,10 +59,7 @@ export function Home() {
     };
 
     load().catch(() => undefined);
-    const interval = window.setInterval(() => {
-      load().catch(() => undefined);
-    }, 60_000);
-
+    const interval = window.setInterval(() => load().catch(() => undefined), 60_000);
     return () => {
       mounted = false;
       window.clearInterval(interval);
@@ -72,32 +71,31 @@ export function Home() {
   return (
     <div>
       <section className="relative overflow-hidden border-b border-white/10">
-        <NetworkField />
-        <div className="shell relative section-gap">
-          <div className="grid items-center gap-8 md:grid-cols-[1.2fr_0.9fr] md:gap-12">
-            <div className="space-y-6">
-              <p className="label">Artist Portfolio</p>
-              <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight md:text-6xl">
-                Quietly cinematic visuals for brands, objects, and stories.
+        <HeroPortal />
+        <div className="shell relative section-gap pt-16 md:pt-24">
+          <div className="grid items-center gap-10 md:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-6 reveal-up">
+              <p className="label">Constellation Studio</p>
+              <h1 className="max-w-3xl text-5xl font-semibold leading-[1.06] tracking-tight md:text-7xl">
+                Cinematic frames,
+                <br />
+                sculpted in light.
               </h1>
-              <p className="max-w-xl text-base text-slate-300 md:text-lg">
-                A living showroom shaped by light, texture, and movement.
-              </p>
               <div className="flex flex-wrap gap-3">
-                <Link to="/gallery" className="btn btn-primary">Enter Gallery</Link>
-                <Link to="/videos" className="btn btn-secondary">Watch Films</Link>
+                <Link to="/gallery" className="btn btn-primary"><GalleryIcon className="h-4 w-4" /> Enter Gallery</Link>
+                <Link to="/videos" className="btn btn-secondary"><FilmIcon className="h-4 w-4" /> Watch Films</Link>
               </div>
               <div className="flex flex-wrap gap-2 pt-2">
                 {notes.map((item) => <span key={item} className="badge">{item}</span>)}
               </div>
             </div>
 
-            <Card className="p-5 md:p-6">
-              <p className="label">Recent Frames</p>
+            <Card className="p-5 md:p-6 reveal-up" interactive>
+              <p className="label">Latest sequence</p>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 {previewStrip.map((item) => (
                   <div key={item.id} className="overflow-hidden rounded-2xl border border-white/10">
-                    <img src={item.type === "video" ? item.poster ?? item.url : item.url} alt={item.title} loading="lazy" className="h-28 w-full object-cover" />
+                    <img src={item.type === "video" ? item.poster ?? item.url : item.url} alt={item.title} loading="lazy" className="h-32 w-full object-cover" />
                   </div>
                 ))}
               </div>
@@ -106,20 +104,22 @@ export function Home() {
         </div>
       </section>
 
+      <SectionDivider />
+
       <section className="shell section-gap">
-        <SectionTitle title="Selected Work" subtitle="The latest uploads appear here automatically every minute." />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <SectionTitle title="Selected Work" subtitle="R2-driven stream, refreshed automatically." />
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {featured.map((item) => (
-            <Card key={item.id} className="group overflow-hidden">
+            <Card key={item.id} className="group overflow-hidden reveal-up" interactive>
               <img
                 src={item.type === "video" ? item.poster ?? item.url : item.url}
                 alt={item.title}
                 loading="lazy"
-                className="h-56 w-full object-cover transition duration-500 group-hover:scale-105"
+                className="h-64 w-full object-cover transition duration-500 group-hover:scale-105"
               />
               <div className="p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{item.type === "video" ? "Film" : "Image"}</p>
-                <h3 className="mt-2 text-xl font-medium">{item.title}</h3>
+                <h3 className="mt-2 flex items-center justify-between text-xl font-medium">{item.title}<ArrowIcon className="h-4 w-4" /></h3>
               </div>
             </Card>
           ))}
