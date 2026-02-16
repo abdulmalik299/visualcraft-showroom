@@ -1,33 +1,43 @@
 # VisualCraft Showroom
 
-A lightweight portfolio site that automatically loads media from Cloudflare R2.
+A premium portfolio showroom built with Vite + React + TypeScript + Tailwind, with automatic media listing from Cloudflare R2.
 
-## What it does
-
-- **Videos tab** reads files from `videos/` in your R2 bucket.
-- **Gallery tab** reads files from `images/` in your R2 bucket.
-- **Thumbnails** are read from `thumbnails/` and matched to videos by filename.
-- Supports auto-refresh polling so new uploads appear automatically.
-- Supports selectable video quality when files are named like `name-720p.mp4`, `name-1080p.mp4`.
-
-## Cloudflare endpoints
+## Cloudflare endpoints (kept as-is)
 
 - Worker API base: `https://visualcraft-assets-api.abdulmelikdilshad.workers.dev`
 - R2 public base: `https://pub-d7314f34e7644251a2d185d6b6bac405.r2.dev`
 
-## Folder structure in R2
+## How to upload
 
-- `images/`
-- `videos/`
-- `thumbnails/`
+- Put still images in `images/`
+- Put thumbnails in `thumbnails/`
+- Put videos in `videos/`
 
-## Thumbnail matching
+### Video quality naming
 
-Use the same base filename:
+Supported patterns:
 
-- `videos/demo-1080p.mp4`
-- `videos/demo-720p.mp4`
-- `thumbnails/demo.jpg`
+1. **Multi-mp4 renditions**
+   - `videos/myclip_1080p.mp4`
+   - `videos/myclip_720p.mp4`
+   - `videos/myclip_480p.mp4`
+
+2. **HLS (preferred)**
+   - `videos/myclip/master.m3u8`
+   - Variant playlists referenced by the manifest
+
+### Pairing rules
+
+- Video ↔ thumbnail pairing is based on base name.
+- Quality suffixes like `_1080p` / `-720p` are ignored for matching.
+- Supported thumbnail files:
+  - `thumbnails/myclip.jpg`
+  - `thumbnails/myclip.png`
+
+## Notes
+
+- Folder placeholder keys (like `images/`) are ignored.
+- Gallery and Videos poll R2 every 60 seconds, so new uploads appear automatically.
 
 ## Local development
 

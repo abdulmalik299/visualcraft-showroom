@@ -9,7 +9,7 @@ export default function App() {
   return (
     <div className="min-h-screen">
       <TopNav />
-      <main className="min-h-[70vh]">
+      <main className="min-h-[75vh]">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/videos" element={<Videos />} />
