@@ -4,6 +4,7 @@ import { Footer } from "../components/Footer";
 import { Home } from "./Home";
 import { Videos } from "./Videos";
 import { Gallery } from "./Gallery";
+import { About } from "./About";
 import { ConstellationBackground } from "../components/constellation/ConstellationBackground";
 import { RouteTransitionOverlay } from "../components/RouteTransitionOverlay";
 import { CursorHalo } from "../components/CursorHalo";
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/videos" element={<Videos />} />
             <Route path="/gallery" element={<Gallery />} />
+            <Route path="/about" element={<About />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

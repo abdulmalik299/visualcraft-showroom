@@ -5,6 +5,7 @@ type CacheEntry = {
   data: R2Object[];
   updatedAt: number;
   promise?: Promise<R2Object[]>;
+  error?: string;
 };
 
 type Options = {
@@ -22,18 +23,35 @@ async function loadIntoCache(key: string, prefix: string, extensions: string[]) 
   const cached = listingCache.get(key);
   if (cached?.promise) return cached.promise;
 
-  const promise = listR2Objects(prefix, extensions).then((data) => {
-    listingCache.set(key, { data, updatedAt: Date.now() });
-    return data;
-  });
+  const promise = listR2Objects(prefix, extensions)
+    .then((data) => {
+      listingCache.set(key, { data, updatedAt: Date.now(), error: undefined });
+      return data;
+    })
+    .catch((error) => {
+      const message = error instanceof Error ? error.message : "Unable to load media.";
+      listingCache.set(key, { data: cached?.data ?? [], updatedAt: cached?.updatedAt ?? 0, error: message });
+      throw error;
+    });
 
-  listingCache.set(key, { data: cached?.data ?? [], updatedAt: cached?.updatedAt ?? 0, promise });
+  listingCache.set(key, {
+    data: cached?.data ?? [],
+    updatedAt: cached?.updatedAt ?? 0,
+    promise,
+    error: cached?.error
+  });
 
   try {
     return await promise;
   } finally {
     const latest = listingCache.get(key);
-    if (latest?.promise) listingCache.set(key, { data: latest.data, updatedAt: latest.updatedAt });
+    if (latest?.promise) {
+      listingCache.set(key, {
+        data: latest.data,
+        updatedAt: latest.updatedAt,
+        error: latest.error
+      });
+    }
   }
 }
 
@@ -45,11 +63,18 @@ export function useR2Listing(prefix: string, extensions: string[], options?: Opt
 
   const [items, setItems] = useState<R2Object[]>(() => listingCache.get(key)?.data ?? []);
   const [loading, setLoading] = useState(() => (listingCache.get(key)?.data?.length ?? 0) === 0);
+  const [error, setError] = useState<string | null>(() => listingCache.get(key)?.error ?? null);
 
   const revalidate = useCallback(async () => {
-    const next = await loadIntoCache(key, prefix, extKey.split(","));
-    setItems(next);
-    return next;
+    try {
+      const next = await loadIntoCache(key, prefix, extKey.split(","));
+      setItems(next);
+      setError(null);
+      return next;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load media.");
+      return listingCache.get(key)?.data ?? [];
+    }
   }, [key, prefix, extKey]);
 
   useEffect(() => {
@@ -60,6 +85,7 @@ export function useR2Listing(prefix: string, extensions: string[], options?: Opt
     } else {
       setLoading(true);
     }
+    setError(cached?.error ?? null);
 
     const freshEnough = cached && Date.now() - cached.updatedAt < staleMs;
     if (!freshEnough) revalidate().finally(() => setLoading(false));
@@ -71,5 +97,5 @@ export function useR2Listing(prefix: string, extensions: string[], options?: Opt
     return () => window.clearInterval(interval);
   }, [key, pollMs, revalidate, staleMs]);
 
-  return { items, loading, revalidate };
+  return { items, loading, error, revalidate };
 }
