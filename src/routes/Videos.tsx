@@ -1,88 +1,68 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SectionTitle } from "../components/SectionTitle";
 import { Toast } from "../components/Toast";
-import { extractQualityLabel, listR2Objects, type R2Object } from "../lib/r2";
+import { type R2Object } from "../lib/r2";
 import { humanizeName } from "../lib/media";
 import { Input } from "../components/ui/Input";
 import { Card } from "../components/ui/Card";
 import { Modal } from "../components/ui/Modal";
 import { Skeleton } from "../components/ui/Skeleton";
 import { ExpandIcon, PauseIcon, PlayIcon, VolumeIcon } from "../components/icons";
+import { useR2Listing } from "../hooks/useR2Listing";
 
-const speedOptions = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const speedOptions = [0.5, 1, 1.25, 1.5, 2];
 
-type VideoOption = { key: string; label: string; url: string };
-type VideoCard = { id: string; title: string; poster?: string; mp4Options: VideoOption[]; hlsMaster?: VideoOption };
-
-function sortQuality(options: VideoOption[]) {
-  return [...options].sort((a, b) => {
-    const ap = parseInt(a.label, 10);
-    const bp = parseInt(b.label, 10);
-    if (Number.isNaN(ap) && Number.isNaN(bp)) return 0;
-    if (Number.isNaN(ap)) return -1;
-    if (Number.isNaN(bp)) return 1;
-    return bp - ap;
-  });
-}
+type VideoCard = { id: string; title: string; poster?: string; sourceUrl: string };
 
 function groupVideos(videos: R2Object[], thumbs: R2Object[]): VideoCard[] {
   const thumbByBase = new Map(thumbs.map((thumb) => [thumb.baseName, thumb.url]));
   const group = new Map<string, VideoCard>();
   for (const video of videos) {
-    const id = video.baseName;
-    const prev = group.get(id) ?? { id, title: humanizeName(video.baseName), poster: thumbByBase.get(video.baseName), mp4Options: [] };
-    if (video.ext === "m3u8" && video.name === "master") prev.hlsMaster = { key: video.key, label: "Auto", url: video.url };
-    else prev.mp4Options.push({ key: video.key, label: extractQualityLabel(video.name) ?? "Original", url: video.url });
-    group.set(id, prev);
+    if (video.ext === "m3u8") continue;
+    const prev = group.get(video.baseName);
+    if (!prev || video.url.includes("_1080p") || !prev.sourceUrl.includes("_1080p")) {
+      group.set(video.baseName, { id: video.baseName, title: humanizeName(video.baseName), poster: thumbByBase.get(video.baseName), sourceUrl: video.url });
+    }
   }
-  return Array.from(group.values()).map((card) => ({ ...card, mp4Options: sortQuality(card.mp4Options) })).sort((a, b) => b.title.localeCompare(a.title));
+  return Array.from(group.values()).sort((a, b) => b.title.localeCompare(a.title));
 }
 
 function resumeKey(id: string) {
   return `video-resume:${id}`;
 }
 
+function formatTime(totalSeconds: number) {
+  if (!Number.isFinite(totalSeconds)) return "00:00";
+  const total = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export function Videos() {
-  const [items, setItems] = useState<VideoCard[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { items: videoItems, loading } = useR2Listing("videos/", ["mp4", "webm", "mov", "m4v", "m3u8"]);
+  const { items: thumbs } = useR2Listing("thumbnails/", ["jpg", "jpeg", "png", "webp", "avif"]);
+
   const [q, setQ] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [selectedUrl, setSelectedUrl] = useState("");
   const [playbackRate, setPlaybackRate] = useState(1);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [duration, setDuration] = useState(0);
   const [progress, setProgress] = useState(0);
   const [buffered, setBuffered] = useState(0);
-  const [metaReady, setMetaReady] = useState(false);
+  const [canPlay, setCanPlay] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
   const [toast, setToast] = useState<{ open: boolean; text: string; kind: "info" | "ok" | "err" }>({ open: false, text: "", kind: "info" });
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hideControlsTimer = useRef<number | null>(null);
+  const resumeWriteTimer = useRef<number | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    const load = async (silent = false) => {
-      if (!silent) setLoading(true);
-      try {
-        const [videos, thumbs] = await Promise.all([
-          listR2Objects("videos/", ["mp4", "webm", "mov", "m4v", "m3u8"]),
-          listR2Objects("thumbnails/", ["jpg", "jpeg", "png", "webp", "avif"])
-        ]);
-        if (!mounted) return;
-        setItems(groupVideos(videos, thumbs));
-      } catch {
-        if (mounted) setToast({ open: true, text: "Video list unavailable.", kind: "err" });
-      } finally {
-        if (mounted && !silent) setLoading(false);
-      }
-    };
-    load();
-    const interval = window.setInterval(() => load(true), 60_000);
-    return () => {
-      mounted = false;
-      window.clearInterval(interval);
-    };
-  }, []);
+  const items = useMemo(() => groupVideos(videoItems, thumbs), [videoItems, thumbs]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -93,48 +73,69 @@ export function Videos() {
   const activeCard = useMemo(() => filtered.find((item) => item.id === activeId) ?? null, [activeId, filtered]);
 
   useEffect(() => {
-    if (!activeCard) return;
-    setSelectedUrl(activeCard.mp4Options[0]?.url ?? activeCard.hlsMaster?.url ?? "");
-    setMetaReady(false);
+    const player = videoRef.current;
+    if (!player || !activeCard) return;
+
+    setCanPlay(false);
     setProgress(0);
     setBuffered(0);
-  }, [activeCard?.id]);
-
-  useEffect(() => {
-    const player = videoRef.current;
-    if (!player || !activeCard || !selectedUrl) return;
-    player.src = selectedUrl;
+    setIsBuffering(true);
+    player.src = activeCard.sourceUrl;
     player.playbackRate = playbackRate;
+
     const saved = localStorage.getItem(resumeKey(activeCard.id));
     const at = saved ? parseFloat(saved) : 0;
 
     const onLoaded = () => {
-      setMetaReady(true);
       setDuration(player.duration || 0);
       if (Number.isFinite(at) && at > 0 && at < player.duration) player.currentTime = at;
+    };
+    const onCanPlay = () => {
+      setCanPlay(true);
+      setIsBuffering(false);
     };
     const onTime = () => {
       setProgress(player.currentTime);
       const end = player.buffered.length > 0 ? player.buffered.end(player.buffered.length - 1) : 0;
       setBuffered(end);
-      localStorage.setItem(resumeKey(activeCard.id), `${player.currentTime}`);
     };
-
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
+    const onWaiting = () => setIsBuffering(true);
+    const onPlaying = () => setIsBuffering(false);
 
     player.addEventListener("loadedmetadata", onLoaded);
+    player.addEventListener("canplay", onCanPlay);
     player.addEventListener("timeupdate", onTime);
     player.addEventListener("play", onPlay);
     player.addEventListener("pause", onPause);
+    player.addEventListener("waiting", onWaiting);
+    player.addEventListener("playing", onPlaying);
+
+    player.play().catch(() => undefined);
 
     return () => {
       player.removeEventListener("loadedmetadata", onLoaded);
+      player.removeEventListener("canplay", onCanPlay);
       player.removeEventListener("timeupdate", onTime);
       player.removeEventListener("play", onPlay);
       player.removeEventListener("pause", onPause);
+      player.removeEventListener("waiting", onWaiting);
+      player.removeEventListener("playing", onPlaying);
     };
-  }, [selectedUrl, activeCard?.id, playbackRate]);
+  }, [activeCard?.id, playbackRate]);
+
+  useEffect(() => {
+    if (!activeCard) return;
+    resumeWriteTimer.current = window.setInterval(() => {
+      const player = videoRef.current;
+      if (!player) return;
+      localStorage.setItem(resumeKey(activeCard.id), `${player.currentTime}`);
+    }, 3000);
+    return () => {
+      if (resumeWriteTimer.current) window.clearInterval(resumeWriteTimer.current);
+    };
+  }, [activeCard?.id]);
 
   useEffect(() => {
     if (!activeCard) return;
@@ -142,42 +143,43 @@ export function Videos() {
       const player = videoRef.current;
       if (!player) return;
       if (event.key === "Escape") setActiveId(null);
-      if ([" ", "k"].includes(event.key)) {
+      if (event.key === " ") {
         event.preventDefault();
         if (player.paused) player.play().catch(() => undefined);
         else player.pause();
       }
-      if (["l", "ArrowRight"].includes(event.key)) player.currentTime += 5;
-      if (["j", "ArrowLeft"].includes(event.key)) player.currentTime -= 5;
+      if (event.key === "ArrowRight") player.currentTime += 10;
+      if (event.key === "ArrowLeft") player.currentTime -= 10;
       if (event.key.toLowerCase() === "m") {
         player.muted = !player.muted;
         setMuted(player.muted);
       }
       if (event.key.toLowerCase() === "f") player.requestFullscreen().catch(() => undefined);
-      if (event.key.toLowerCase() === "p") requestPiP();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [activeCard]);
 
-  const requestPiP = async () => {
-    const player = videoRef.current;
-    if (!player || !document.pictureInPictureEnabled) return;
-    try {
-      if (document.pictureInPictureElement) await document.exitPictureInPicture();
-      else await player.requestPictureInPicture();
-    } catch {
-      setToast({ open: true, text: "Picture-in-picture unavailable.", kind: "info" });
-    }
+  const showControls = () => {
+    setControlsVisible(true);
+    if (hideControlsTimer.current) window.clearTimeout(hideControlsTimer.current);
+    hideControlsTimer.current = window.setTimeout(() => {
+      if (playing) setControlsVisible(false);
+    }, 2200);
   };
 
-  const showQualityPicker = (activeCard?.mp4Options.length ?? 0) > 1;
+  const cycleSpeed = () => {
+    const idx = speedOptions.findIndex((speed) => speed === playbackRate);
+    const next = speedOptions[(idx + 1) % speedOptions.length];
+    setPlaybackRate(next);
+    if (videoRef.current) videoRef.current.playbackRate = next;
+  };
 
   return (
     <div className="shell section-gap">
       <SectionTitle
         title="Films"
-        subtitle="Cinematic cards with modern keyboard-controlled playback."
+        subtitle="Cinematic cards with modern in-player playback controls."
         right={<Input id="video-search" name="video-search" className="w-full md:w-80" placeholder="Search films" value={q} onChange={(e) => setQ(e.target.value)} />}
       />
 
@@ -191,7 +193,7 @@ export function Videos() {
             <button key={video.id} type="button" className="text-left" onClick={() => setActiveId(video.id)}>
               <Card className="group overflow-hidden" interactive>
                 {video.poster ? <img src={video.poster} alt={video.title} className="video-poster h-52 w-full object-cover" loading="lazy" /> : <Skeleton className="h-52 w-full" />}
-                <div className="space-y-1 p-4"><h3 className="text-lg font-medium">{video.title}</h3><p className="text-sm text-slate-400">{video.mp4Options.length > 1 ? "Multiple renditions" : "Original"}</p></div>
+                <div className="space-y-1 p-4"><h3 className="text-lg font-medium">{video.title}</h3><p className="text-sm text-slate-400">Theater playback</p></div>
               </Card>
             </button>
           ))}
@@ -202,11 +204,22 @@ export function Videos() {
         {activeCard ? (
           <div className="flex h-[90vh] flex-col gap-3 p-4 md:p-6">
             <h3 className="pr-20 text-xl font-medium">{activeCard.title}</h3>
-            <div className="relative flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black">
-              {!metaReady ? <Skeleton className="absolute inset-0 h-full w-full rounded-none bg-gradient-to-r from-white/5 via-white/15 to-white/5" /> : null}
-              <video ref={videoRef} className="h-full min-h-[260px] w-full" playsInline preload="metadata" poster={activeCard.poster} />
+            <div
+              className="relative flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black"
+              onMouseMove={showControls}
+              onMouseLeave={() => playing && setControlsVisible(false)}
+              onTouchStart={showControls}
+            >
+              <video ref={videoRef} className="h-full min-h-[260px] w-full" playsInline preload="metadata" poster={activeCard.poster} onClick={() => {
+                const player = videoRef.current;
+                if (!player) return;
+                if (player.paused) player.play().catch(() => undefined);
+                else player.pause();
+              }} />
 
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3">
+              {!canPlay || isBuffering ? <div className="absolute inset-0 grid place-items-center bg-black/30"><div className="loader-spin h-10 w-10 rounded-full border-2 border-white/20 border-t-white" /></div> : null}
+
+              <div className={controlsVisible ? "video-controls-overlay is-visible" : "video-controls-overlay"}>
                 <div className="relative h-2 rounded-full bg-white/20">
                   <div className="absolute inset-y-0 left-0 rounded-full bg-white/30" style={{ width: `${duration ? (buffered / duration) * 100 : 0}%` }} />
                   <div className="absolute inset-y-0 left-0 rounded-full bg-indigo-300" style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }} />
@@ -224,29 +237,27 @@ export function Videos() {
                     className="absolute inset-0 h-2 w-full cursor-pointer opacity-0"
                   />
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button type="button" className="icon-btn" onClick={() => {
-                    const player = videoRef.current;
-                    if (!player) return;
-                    if (player.paused) player.play().catch(() => undefined);
-                    else player.pause();
-                  }} aria-label={playing ? "Pause" : "Play"}>{playing ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}</button>
-                  <button type="button" className="icon-btn" onClick={() => {
-                    const player = videoRef.current;
-                    if (!player) return;
-                    player.muted = !player.muted;
-                    setMuted(player.muted);
-                  }} aria-label="Mute"><VolumeIcon className="h-4 w-4" />{muted ? <span className="sr-only">Muted</span> : null}</button>
-                  <button type="button" className="icon-btn" onClick={() => videoRef.current?.requestFullscreen().catch(() => undefined)} aria-label="Fullscreen"><ExpandIcon className="h-4 w-4" /></button>
-                  <button type="button" className="btn btn-ghost px-3 py-1" onClick={requestPiP}>PiP</button>
-                  {showQualityPicker ? <select className="input h-9 w-auto" value={selectedUrl} onChange={(e) => setSelectedUrl(e.target.value)}>{activeCard.mp4Options.map((option) => <option key={option.key} value={option.url}>{option.label}</option>)}</select> : <p className="text-sm text-slate-300">Original</p>}
-                  <select id="speed" className="input h-9 w-auto" value={playbackRate} onChange={(e) => {
-                    const next = Number(e.target.value);
-                    setPlaybackRate(next);
-                    if (videoRef.current) videoRef.current.playbackRate = next;
-                  }}>
-                    {speedOptions.map((speed) => <option key={speed} value={speed}>{speed}x</option>)}
-                  </select>
+
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <button type="button" className="icon-btn" onClick={() => {
+                      const player = videoRef.current;
+                      if (!player) return;
+                      if (player.paused) player.play().catch(() => undefined);
+                      else player.pause();
+                    }} aria-label={playing ? "Pause" : "Play"}>{playing ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}</button>
+                    <button type="button" className="icon-btn" onClick={() => { if (videoRef.current) videoRef.current.currentTime -= 10; }} aria-label="Rewind 10 seconds">-10</button>
+                    <button type="button" className="icon-btn" onClick={() => { if (videoRef.current) videoRef.current.currentTime += 10; }} aria-label="Forward 10 seconds">+10</button>
+                    <button type="button" className="icon-btn" onClick={() => {
+                      const player = videoRef.current;
+                      if (!player) return;
+                      player.muted = !player.muted;
+                      setMuted(player.muted);
+                    }} aria-label="Mute"><VolumeIcon className="h-4 w-4" />{muted ? <span className="sr-only">Muted</span> : null}</button>
+                    <button type="button" className="icon-btn" onClick={() => videoRef.current?.requestFullscreen().catch(() => undefined)} aria-label="Fullscreen"><ExpandIcon className="h-4 w-4" /></button>
+                    <button type="button" className="btn btn-ghost px-3 py-1" onClick={cycleSpeed}>{playbackRate}x</button>
+                  </div>
+                  <p className="text-sm text-slate-200">{formatTime(progress)} / {formatTime(duration)}</p>
                 </div>
               </div>
             </div>
