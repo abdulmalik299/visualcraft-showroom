@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { cx } from "../lib/utils";
-import { FilmIcon, GalleryIcon, LogoMark, ToggleStudioModeIcon } from "./icons";
+import { FilmIcon, GalleryIcon, LogoMark, MenuIcon, ToggleStudioModeIcon } from "./icons";
 
 const items = [
   { to: "/", label: "Home" },
+  { to: "/gallery", label: "Gallery", icon: GalleryIcon },
   { to: "/videos", label: "Videos", icon: FilmIcon },
-  { to: "/gallery", label: "Gallery", icon: GalleryIcon }
+  { to: "/about", label: "About" }
 ];
 
 export function TopNav() {
@@ -28,13 +29,7 @@ export function TopNav() {
           {items.map((item) => {
             const Icon = item.icon;
             return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cx("nav-pill nav-underline", isActive ? "is-active text-white" : "text-slate-300 hover:text-white")
-                }
-              >
+              <NavLink key={item.to} to={item.to} className={({ isActive }) => cx("nav-pill nav-underline", isActive ? "is-active text-white" : "text-slate-300 hover:text-white")}>
                 {Icon ? <Icon className="h-4 w-4" aria-label={`${item.label} icon`} /> : <span className="h-4 w-4" />}
                 {item.label}
               </NavLink>
@@ -54,8 +49,8 @@ export function TopNav() {
           </button>
         </nav>
 
-        <button className="btn btn-ghost px-4 py-2 md:hidden" onClick={() => setOpen((v) => !v)} type="button">
-          {open ? "Close" : "Menu"}
+        <button className="icon-btn md:hidden" onClick={() => setOpen((v) => !v)} type="button" aria-label={open ? "Close menu" : "Open menu"}>
+          <MenuIcon className="h-5 w-5" />
         </button>
       </div>
 
@@ -69,9 +64,7 @@ export function TopNav() {
                   key={item.to}
                   to={item.to}
                   onClick={() => setOpen(false)}
-                  className={({ isActive }) =>
-                    cx("flex items-center gap-2 rounded-2xl px-3 py-2 text-sm", isActive ? "bg-white/15 text-white" : "text-slate-300 hover:bg-white/10")
-                  }
+                  className={({ isActive }) => cx("flex items-center gap-2 rounded-2xl px-3 py-2 text-sm", isActive ? "bg-white/15 text-white" : "text-slate-300 hover:bg-white/10")}
                 >
                   {Icon ? <Icon className="h-4 w-4" /> : <span className="h-4 w-4" />}
                   {item.label}

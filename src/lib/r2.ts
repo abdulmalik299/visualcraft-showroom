@@ -31,6 +31,18 @@ function deriveBaseName(normalizedKey: string, name: string, ext: string) {
   return normalizeMediaBaseName(name);
 }
 
+function hasFileExtension(key: string) {
+  const fileName = key.split("/").pop() ?? key;
+  const dotIndex = fileName.lastIndexOf(".");
+  return dotIndex > 0 && dotIndex < fileName.length - 1;
+}
+
+function isRenderableObject(item: ParsedListItem) {
+  const normalized = normalizeKey(item.key);
+  if (!normalized || normalized.endsWith("/")) return false;
+  return hasFileExtension(normalized);
+}
+
 function toR2Object(item: ParsedListItem): R2Object {
   const normalized = normalizeKey(item.key);
   const fileName = normalized.split("/").pop() ?? normalized;
@@ -132,8 +144,9 @@ async function fetchWithVariants(prefix: string) {
       const data = await res.json();
       const rows = parseItemsFromUnknown(data)
         .map((item) => ({ ...item, key: normalizeKey(item.key) }))
-        .filter((item) => item.key.startsWith(prefix));
-      if (rows.length > 0) return rows;
+        .filter((item) => item.key.startsWith(prefix))
+        .filter(isRenderableObject);
+      return rows;
     } catch {
       // try next variant
     }
@@ -145,7 +158,7 @@ async function fetchWithVariants(prefix: string) {
 async function fetchWithPublicList(prefix: string) {
   const url = `${R2_PUBLIC_BASE}/?list-type=2&prefix=${encodeURIComponent(prefix)}`;
   const res = await fetch(url);
-  if (!res.ok) return [];
+  if (!res.ok) throw new Error("Unable to list assets from storage.");
 
   const xml = await res.text();
   const doc = new DOMParser().parseFromString(xml, "application/xml");
@@ -157,7 +170,8 @@ async function fetchWithPublicList(prefix: string) {
       return { key, lastModified };
     })
     .map((item) => ({ ...item, key: normalizeKey(item.key) }))
-    .filter((item) => item.key.startsWith(prefix));
+    .filter((item) => item.key.startsWith(prefix))
+    .filter(isRenderableObject);
 }
 
 function toTimestamp(value?: string) {
@@ -167,21 +181,25 @@ function toTimestamp(value?: string) {
 
 export async function listR2Objects(prefix: string, extensions: string[]) {
   const allowed = new Set(extensions.map((ext) => ext.toLowerCase()));
-  const fromWorker = await fetchWithVariants(prefix);
-  const rows = fromWorker.length > 0 ? fromWorker : await fetchWithPublicList(prefix);
 
-  return rows
-    .map(toR2Object)
-    .filter((obj) => !obj.key.endsWith("/"))
-    .filter((obj) => allowed.has(obj.ext))
-    .sort((a, b) => {
-      const at = toTimestamp(a.lastModified);
-      const bt = toTimestamp(b.lastModified);
-      if (!Number.isNaN(at) && !Number.isNaN(bt) && at !== bt) {
-        return bt - at;
-      }
-      return b.name.localeCompare(a.name);
-    });
+  try {
+    const fromWorker = await fetchWithVariants(prefix);
+    const rows = fromWorker.length > 0 ? fromWorker : await fetchWithPublicList(prefix);
+
+    return rows
+      .map(toR2Object)
+      .filter((obj) => allowed.has(obj.ext))
+      .sort((a, b) => {
+        const at = toTimestamp(a.lastModified);
+        const bt = toTimestamp(b.lastModified);
+        if (!Number.isNaN(at) && !Number.isNaN(bt) && at !== bt) {
+          return bt - at;
+        }
+        return b.name.localeCompare(a.name);
+      });
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : "Unable to load assets right now.");
+  }
 }
 
 export function extractQualityLabel(name: string) {

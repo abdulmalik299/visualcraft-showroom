@@ -44,6 +44,7 @@ export function ConstellationBackground() {
     let mid: Layer = new Float32Array();
     let near: Layer = new Float32Array();
     let frame = 0;
+    let paused = false;
 
     const resize = () => {
       viewport.width = window.innerWidth;
@@ -52,7 +53,9 @@ export function ConstellationBackground() {
       canvas.width = Math.floor(viewport.width * viewport.dpr);
       canvas.height = Math.floor(viewport.height * viewport.dpr);
       ctx.setTransform(viewport.dpr, 0, 0, viewport.dpr, 0, 0);
-      const density = window.matchMedia("(max-width: 768px)").matches ? 0.7 : 1;
+      const compact = window.matchMedia("(max-width: 768px)").matches;
+      const lowPower = (navigator.hardwareConcurrency ?? 8) <= 4 || window.matchMedia("(prefers-reduced-data: reduce)").matches;
+      const density = compact ? 0.7 : lowPower ? 0.62 : 1;
       far = buildLayer(Math.floor(26 * density), viewport.width, viewport.height, 0.15);
       mid = buildLayer(Math.floor(40 * density), viewport.width, viewport.height, 0.2);
       near = buildLayer(Math.floor(54 * density), viewport.width, viewport.height, 0.26);
@@ -165,7 +168,7 @@ export function ConstellationBackground() {
     };
 
     const animate = () => {
-      frame = window.requestAnimationFrame(animate);
+      if (paused) return;
       pointer.x += (pointer.targetX - pointer.x) * 0.16;
       pointer.y += (pointer.targetY - pointer.y) * 0.16;
       ctx.clearRect(0, 0, viewport.width, viewport.height);
@@ -186,6 +189,14 @@ export function ConstellationBackground() {
         ctx.closePath();
         ctx.stroke();
       }
+
+      frame = window.requestAnimationFrame(animate);
+    };
+
+    const onVisibility = () => {
+      const wasPaused = paused;
+      paused = document.hidden;
+      if (wasPaused && !paused) frame = window.requestAnimationFrame(animate);
     };
 
     const onScroll = () => {
@@ -205,6 +216,7 @@ export function ConstellationBackground() {
     window.addEventListener("pointercancel", onLeave);
     window.addEventListener("studio-card-anchor", onAnchor as EventListener);
     window.addEventListener("studio-constellation-intensity", onIntensity as EventListener);
+    document.addEventListener("visibilitychange", onVisibility);
     window.setTimeout(resize, 0);
 
     return () => {
@@ -218,6 +230,7 @@ export function ConstellationBackground() {
       window.removeEventListener("pointercancel", onLeave);
       window.removeEventListener("studio-card-anchor", onAnchor as EventListener);
       window.removeEventListener("studio-constellation-intensity", onIntensity as EventListener);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [reducedMotion, location.pathname]);
 
