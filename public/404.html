@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>VisualCraft Showroom</title>
+    <script>
+      // GitHub Pages SPA redirect for project pages.
+      // Redirect unknown routes to the app entry while preserving path/query/hash.
+      (function () {
+        var pathSegmentsToKeep = 1;
+        var l = window.location;
+        var redirectPath = l.pathname
+          .split("/")
+          .slice(1)
+          .map(function (segment) {
+            return segment.replace(/&/g, "~and~");
+          })
+          .join("/");
+
+        var newUrl =
+          l.protocol +
+          "//" +
+          l.hostname +
+          (l.port ? ":" + l.port : "") +
+          l.pathname
+            .split("/")
+            .slice(0, 1 + pathSegmentsToKeep)
+            .join("/") +
+          "/?" +
+          redirectPath +
+          (l.search ? "&" + l.search.slice(1).replace(/&/g, "~and~") : "") +
+          l.hash;
+
+        l.replace(newUrl);
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
