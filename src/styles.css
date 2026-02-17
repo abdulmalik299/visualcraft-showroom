@@ -55,8 +55,8 @@ h1, h2, h3 { font-family: "Space Grotesk", Inter, sans-serif; }
 .nav-underline:hover::after, .nav-underline.is-active::after { transform: scaleX(1); }
 .icon-btn { @apply inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/20 text-slate-100 transition hover:bg-white/15; }
 
-.logo-reveal { transform: translateY(8px); opacity: 0.8; transition: transform 320ms ease, opacity 320ms ease; }
-.group:hover .logo-reveal { transform: translateY(0); opacity: 1; }
+.logo-reveal { transform: translateY(0); opacity: 1; transition: opacity 220ms ease; }
+.group:hover .logo-reveal { opacity: 1; }
 
 .studio-icon {
   stroke: url(#studio-gradient);

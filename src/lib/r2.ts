@@ -12,11 +12,21 @@ export type R2Object = {
 
 type ParsedListItem = {
   key: string;
+  url?: string;
   lastModified?: string;
 };
 
 function normalizeKey(key: string) {
-  return key.replace(/^\/+/, "");
+  const trimmed = key.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      return url.pathname.replace(/^\/+/, "");
+    } catch {
+      return trimmed.replace(/^\/+/, "");
+    }
+  }
+  return trimmed.replace(/^\/+/, "");
 }
 
 function normalizeMediaBaseName(name: string) {
@@ -43,20 +53,29 @@ function isRenderableObject(item: ParsedListItem) {
   return hasFileExtension(normalized);
 }
 
+function resolveObjectUrl(normalizedKey: string, explicitUrl?: string) {
+  if (explicitUrl) return explicitUrl;
+  const isAbsolute = /^https?:\/\//i.test(normalizedKey);
+  if (isAbsolute) return normalizedKey;
+
+  const encodedKey = normalizedKey
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+
+  return `${R2_PUBLIC_BASE}/${encodedKey}`;
+}
+
 function toR2Object(item: ParsedListItem): R2Object {
   const normalized = normalizeKey(item.key);
   const fileName = normalized.split("/").pop() ?? normalized;
   const dotIndex = fileName.lastIndexOf(".");
   const ext = dotIndex > -1 ? fileName.slice(dotIndex + 1).toLowerCase() : "";
   const name = dotIndex > -1 ? fileName.slice(0, dotIndex) : fileName;
-  const encodedKey = normalized
-    .split("/")
-    .map((part) => encodeURIComponent(part))
-    .join("/");
 
   return {
     key: normalized,
-    url: `${R2_PUBLIC_BASE}/${encodedKey}`,
+    url: resolveObjectUrl(normalized, item.url),
     name,
     ext,
     baseName: deriveBaseName(normalized, name, ext),
@@ -78,17 +97,24 @@ function parseItemFromUnknown(item: unknown): ParsedListItem | null {
     key?: unknown;
     name?: unknown;
     path?: unknown;
+    Key?: unknown;
+    url?: unknown;
+    publicUrl?: unknown;
+    href?: unknown;
+    src?: unknown;
     lastModified?: unknown;
     last_modified?: unknown;
     uploaded?: unknown;
     updatedAt?: unknown;
   };
 
-  const keyCandidate = row.key ?? row.name ?? row.path;
+  const keyCandidate = row.key ?? row.name ?? row.path ?? row.Key;
+  const urlCandidate = row.url ?? row.publicUrl ?? row.href ?? row.src;
   if (typeof keyCandidate !== "string") return null;
 
   return {
     key: keyCandidate,
+    url: typeof urlCandidate === "string" ? urlCandidate : undefined,
     lastModified:
       asIsoDate(row.lastModified) ??
       asIsoDate(row.last_modified) ??
@@ -146,7 +172,7 @@ async function fetchWithVariants(prefix: string) {
         .map((item) => ({ ...item, key: normalizeKey(item.key) }))
         .filter((item) => item.key.startsWith(prefix))
         .filter(isRenderableObject);
-      return rows;
+      if (rows.length > 0) return rows;
     } catch {
       // try next variant
     }
@@ -184,7 +210,14 @@ export async function listR2Objects(prefix: string, extensions: string[]) {
 
   try {
     const fromWorker = await fetchWithVariants(prefix);
-    const rows = fromWorker.length > 0 ? fromWorker : await fetchWithPublicList(prefix);
+    let rows = fromWorker;
+    if (rows.length === 0) {
+      try {
+        rows = await fetchWithPublicList(prefix);
+      } catch {
+        rows = [];
+      }
+    }
 
     return rows
       .map(toR2Object)

@@ -6,7 +6,7 @@ import { type R2Object } from "../lib/r2";
 import { humanizeName } from "../lib/media";
 import { HeroPortal } from "../components/artwork/HeroPortal";
 import { SectionDivider } from "../components/artwork/SectionDivider";
-import { ArrowIcon, BehanceIcon, FilmIcon, GalleryIcon, InstagramIcon, LinkedInIcon, MailIcon } from "../components/icons";
+import { ArrowIcon, FilmIcon, GalleryIcon, LinkedInIcon, MailIcon } from "../components/icons";
 import { useR2Listing } from "../hooks/useR2Listing";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 
@@ -35,9 +35,10 @@ function buildFeatured(images: R2Object[], videos: R2Object[], thumbs: R2Object[
 
 const links = [
   { href: "mailto:abdulmelikdilshad@gmail.com", label: "Email", icon: MailIcon },
-  { href: "https://instagram.com", label: "Instagram", icon: InstagramIcon },
-  { href: "https://behance.net", label: "Behance", icon: BehanceIcon },
-  { href: "https://linkedin.com", label: "LinkedIn", icon: LinkedInIcon }
+  { href: "https://www.linkedin.com/in/abdulmalek-ahmed-616b7a174", label: "LinkedIn", icon: LinkedInIcon },
+  { href: "https://abdulmalekd1.artstation.com/", label: "ArtStation", icon: GalleryIcon },
+  { href: "https://www.freelancer.com/u/abdulmalek3D?sb=t", label: "Freelancer", icon: ArrowIcon },
+  { href: "https://vimeo.com/abdulmalekdlshad", label: "Vimeo", icon: FilmIcon }
 ];
 
 export function Home() {
@@ -151,14 +152,14 @@ export function Home() {
           </Card>
           <Card className="shadow-reveal p-6 md:col-span-3" interactive data-interactive-card>
             <p className="label">About</p>
-            <p className="mt-2 text-slate-300">Blender-focused artist with Adobe post pipeline experience. Based in Erbil, available remote.</p>
+            <p className="mt-2 text-slate-300">Blender-focused artist with Adobe post pipeline experience, available for remote collaborations.</p>
             <Link to="/about" className="mt-4 inline-flex items-center gap-2 text-slate-200">Read profile <ArrowIcon className="h-4 w-4" /></Link>
           </Card>
           <Card className="shadow-reveal p-6 md:col-span-3" interactive data-interactive-card>
             <p className="label">Contact</p>
             <p className="mt-2 text-slate-300">Open to freelance, contract, and studio collaborations.</p>
             <div className="mt-4 flex gap-2">
-              {links.map(({ href, label, icon: Icon }) => <a key={label} className="icon-btn" href={href} target="_blank" rel="noreferrer" aria-label={label}><Icon className="h-4 w-4" /></a>)}
+              {links.map(({ href, label, icon: Icon }) => <a key={label} className="icon-btn" href={href} target="_blank" rel="noreferrer" aria-label={label} title={label}><Icon className="h-4 w-4" /></a>)}
             </div>
           </Card>
         </div>
