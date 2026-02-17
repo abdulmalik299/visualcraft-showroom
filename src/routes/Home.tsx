@@ -2,14 +2,21 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SectionTitle } from "../components/SectionTitle";
 import { Card } from "../components/ui/Card";
-import { listR2Objects, type R2Object } from "../lib/r2";
+import { type R2Object } from "../lib/r2";
 import { humanizeName } from "../lib/media";
 import { HeroPortal } from "../components/artwork/HeroPortal";
 import { SectionDivider } from "../components/artwork/SectionDivider";
 import { ArrowIcon, FilmIcon, GalleryIcon } from "../components/icons";
+import { useR2Listing } from "../hooks/useR2Listing";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 
 const notes = ["Direction", "Texture", "Atmosphere", "Motion"];
 const taglines = ["Fluid Motion Visuals", "Tactile Frame Stories", "Cinematic Product Poetry", "Modern Light Narratives"];
+const storySections = [
+  { id: "frames", title: "Frames", copy: "Still compositions that feel editorial and tactile." },
+  { id: "motion", title: "Motion", copy: "Controlled movement tuned for premium product storytelling." },
+  { id: "detail", title: "Detail", copy: "Micro-lighting and texture polish for every reveal." }
+];
 
 type FeaturedItem = {
   id: string;
@@ -46,32 +53,16 @@ function buildFeatured(images: R2Object[], videos: R2Object[], thumbs: R2Object[
 }
 
 export function Home() {
-  const [featured, setFeatured] = useState<FeaturedItem[]>([]);
+  const { items: images } = useR2Listing("images/", ["jpg", "jpeg", "png", "webp", "avif", "gif"]);
+  const { items: videos } = useR2Listing("videos/", ["mp4", "webm", "mov", "m4v", "m3u8"]);
+  const { items: thumbs } = useR2Listing("thumbnails/", ["jpg", "jpeg", "png", "webp", "avif"]);
+  const reducedMotion = useReducedMotion();
+
   const [activeSlide, setActiveSlide] = useState(0);
   const [taglineIdx, setTaglineIdx] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const load = async () => {
-      const [images, videos, thumbs] = await Promise.all([
-        listR2Objects("images/", ["jpg", "jpeg", "png", "webp", "avif", "gif"]),
-        listR2Objects("videos/", ["mp4", "webm", "mov", "m4v", "m3u8"]),
-        listR2Objects("thumbnails/", ["jpg", "jpeg", "png", "webp", "avif"])
-      ]);
-      if (!mounted) return;
-      setFeatured(buildFeatured(images, videos, thumbs));
-    };
-
-    load().catch(() => undefined);
-    const interval = window.setInterval(() => load().catch(() => undefined), 60_000);
-    return () => {
-      mounted = false;
-      window.clearInterval(interval);
-    };
-  }, []);
-
+  const featured = useMemo(() => buildFeatured(images, videos, thumbs), [images, videos, thumbs]);
   const previewStrip = useMemo(() => featured.slice(0, 4), [featured]);
 
   useEffect(() => {
@@ -87,6 +78,11 @@ export function Home() {
       setActiveSlide((prev) => (prev + 1) % featured.length);
     }, 4200);
     return () => window.clearInterval(id);
+  }, [featured.length]);
+
+  useEffect(() => {
+    if (featured.length === 0) setActiveSlide(0);
+    else setActiveSlide((prev) => prev % featured.length);
   }, [featured.length]);
 
   const goSlide = (next: number) => {
@@ -163,6 +159,29 @@ export function Home() {
               <button key={item.id} type="button" className={idx === activeSlide ? "carousel-dot is-active" : "carousel-dot"} onClick={() => setActiveSlide(idx)} aria-label={`Go to featured slide ${idx + 1}`} />
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="shell section-gap">
+        <SectionTitle title="Story strip" subtitle="Scroll to reveal the narrative arc." />
+        <div className="space-y-5">
+          {storySections.map((story, idx) => (
+            <article
+              key={story.id}
+              className="story-strip-card story-reveal"
+              onMouseEnter={() => window.dispatchEvent(new CustomEvent("studio-constellation-intensity", { detail: 1.15 + idx * 0.08 }))}
+              onMouseLeave={() => window.dispatchEvent(new CustomEvent("studio-constellation-intensity", { detail: 1 }))}
+              onFocus={() => window.dispatchEvent(new CustomEvent("studio-constellation-intensity", { detail: 1.15 + idx * 0.08 }))}
+              onBlur={() => window.dispatchEvent(new CustomEvent("studio-constellation-intensity", { detail: 1 }))}
+            >
+              <h3 className="text-3xl font-semibold tracking-tight">{story.title}</h3>
+              <p className="mt-2 max-w-xl text-slate-300">{story.copy}</p>
+              <Card className="mt-4 max-w-3xl p-5 reveal-up" interactive={!reducedMotion}>
+                <p className="label">Featured card</p>
+                <p className="mt-2 text-lg text-slate-100">{story.title} sequences adapt to scroll and keep your visual rhythm premium.</p>
+              </Card>
+            </article>
+          ))}
         </div>
       </section>
 

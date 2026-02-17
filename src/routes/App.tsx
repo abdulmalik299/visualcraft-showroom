@@ -11,7 +11,7 @@ import { ScrollRevealManager } from "../components/ScrollRevealManager";
 
 export default function App() {
   return (
-    <div className="min-h-screen">
+    <div className="relative isolate min-h-screen overflow-x-hidden">
       <ConstellationBackground />
       <CursorHalo />
       <RouteTransitionOverlay />

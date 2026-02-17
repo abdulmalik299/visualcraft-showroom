@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 
 type Layer = Float32Array;
@@ -27,6 +28,7 @@ export function ConstellationBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const anchorRef = useRef<Anchor | null>(null);
   const reducedMotion = useReducedMotion();
+  const location = useLocation();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -36,6 +38,7 @@ export function ConstellationBackground() {
 
     const pointer = { x: -1000, y: -1000, targetX: -1000, targetY: -1000, active: false };
     const viewport = { width: 1, height: 1, dpr: 1, scrollY: 0 };
+    let intensity = 1;
 
     let far: Layer = new Float32Array();
     let mid: Layer = new Float32Array();
@@ -93,7 +96,7 @@ export function ConstellationBackground() {
         layer[idx + 5] = theta;
 
         const pulse = 0.72 + Math.sin(theta) * 0.24;
-        ctx.fillStyle = `${color}${alphaBase * pulse})`;
+        ctx.fillStyle = `${color}${alphaBase * pulse * intensity})`;
         ctx.beginPath();
         ctx.arc(x, y + viewport.scrollY * parallax, radius, 0, Math.PI * 2);
         ctx.fill();
@@ -107,24 +110,12 @@ export function ConstellationBackground() {
           const bi = j * 6;
           const dist = Math.hypot(near[ai] - near[bi], near[ai + 1] - near[bi + 1]);
           if (dist > 120) continue;
-          const alpha = (1 - dist / 120) * (pointer.active ? 0.28 : 0.16);
+          const alpha = (1 - dist / 120) * (pointer.active ? 0.28 : 0.16) * intensity;
           ctx.strokeStyle = `rgba(118, 168, 255, ${alpha})`;
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.moveTo(near[ai], near[ai + 1] + viewport.scrollY * 0.04);
           ctx.lineTo(near[bi], near[bi + 1] + viewport.scrollY * 0.04);
-          ctx.stroke();
-        }
-      }
-      if (pointer.active && !reducedMotion) {
-        for (let i = 0; i < near.length / 6; i += 1) {
-          const idx = i * 6;
-          const dist = Math.hypot(pointer.x - near[idx], pointer.y - near[idx + 1]);
-          if (dist > 160) continue;
-          ctx.strokeStyle = `rgba(89, 226, 214, ${(1 - dist / 160) * 0.32})`;
-          ctx.beginPath();
-          ctx.moveTo(pointer.x, pointer.y);
-          ctx.lineTo(near[idx], near[idx + 1]);
           ctx.stroke();
         }
       }
@@ -168,6 +159,11 @@ export function ConstellationBackground() {
       };
     };
 
+    const onIntensity = (event: Event) => {
+      const detail = (event as CustomEvent<number | undefined>).detail;
+      intensity = clamp(detail ?? 1, 0.8, 1.45);
+    };
+
     const animate = () => {
       frame = window.requestAnimationFrame(animate);
       pointer.x += (pointer.targetX - pointer.x) * 0.16;
@@ -201,24 +197,29 @@ export function ConstellationBackground() {
     frame = window.requestAnimationFrame(animate);
 
     window.addEventListener("resize", resize);
+    window.addEventListener("orientationchange", resize);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("pointermove", onMove);
     window.addEventListener("touchmove", onTouchMove, { passive: true });
     window.addEventListener("pointerleave", onLeave);
     window.addEventListener("pointercancel", onLeave);
     window.addEventListener("studio-card-anchor", onAnchor as EventListener);
+    window.addEventListener("studio-constellation-intensity", onIntensity as EventListener);
+    window.setTimeout(resize, 0);
 
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("orientationchange", resize);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("pointerleave", onLeave);
       window.removeEventListener("pointercancel", onLeave);
       window.removeEventListener("studio-card-anchor", onAnchor as EventListener);
+      window.removeEventListener("studio-constellation-intensity", onIntensity as EventListener);
     };
-  }, [reducedMotion]);
+  }, [reducedMotion, location.pathname]);
 
-  return <canvas ref={canvasRef} className="fixed inset-0 h-full w-full" aria-hidden="true" />;
+  return <canvas ref={canvasRef} className="constellation-bg" aria-hidden="true" />;
 }

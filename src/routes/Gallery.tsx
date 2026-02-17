@@ -7,26 +7,28 @@ import { Skeleton } from "../components/ui/Skeleton";
 import { Modal } from "../components/ui/Modal";
 import { Toast } from "../components/Toast";
 import { inferCategory, inferTags, humanizeName } from "../lib/media";
-import { listR2Objects, type R2Object } from "../lib/r2";
+import { type R2Object } from "../lib/r2";
 import { CopyLinkIcon, ExpandIcon } from "../components/icons";
+import { useR2Listing } from "../hooks/useR2Listing";
 
 type Row = { item: R2Object; title: string; tags: string[]; category: string };
 type PointerInfo = { x: number; y: number };
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;
-
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
 export function Gallery() {
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { items: imageItems, loading } = useR2Listing("images/", ["jpg", "jpeg", "png", "webp", "avif", "gif"]);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("All");
   const [active, setActive] = useState<number | null>(null);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isAnimating, setIsAnimating] = useState(false);
+  const [cardLoaded, setCardLoaded] = useState<Record<string, boolean>>({});
+  const [modalLoading, setModalLoading] = useState(true);
+  const [modalProgress, setModalProgress] = useState(0);
   const [toast, setToast] = useState<{ open: boolean; text: string; kind: "info" | "ok" | "err" }>({ open: false, text: "", kind: "info" });
 
   const wheelTargetRef = useRef<HTMLImageElement | null>(null);
@@ -36,28 +38,10 @@ export function Gallery() {
   const dragVelocity = useRef({ x: 0, y: 0 });
   const inertiaFrame = useRef<number | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    const load = async (silent = false) => {
-      if (!silent) setLoading(true);
-      try {
-        const images = await listR2Objects("images/", ["jpg", "jpeg", "png", "webp", "avif", "gif"]);
-        if (!mounted) return;
-        setRows(images.map((item) => {
-          const tags = inferTags(item.baseName);
-          return { item, tags, title: humanizeName(item.baseName), category: inferCategory(tags) };
-        }));
-      } finally {
-        if (mounted && !silent) setLoading(false);
-      }
-    };
-    load();
-    const interval = window.setInterval(() => load(true), 60_000);
-    return () => {
-      mounted = false;
-      window.clearInterval(interval);
-    };
-  }, []);
+  const rows = useMemo<Row[]>(() => imageItems.map((item) => {
+    const tags = inferTags(item.baseName);
+    return { item, tags, title: humanizeName(item.baseName), category: inferCategory(tags) };
+  }), [imageItems]);
 
   const tagFilters = useMemo(() => ["All", ...Array.from(new Set(rows.map((row) => row.category))).sort()], [rows]);
 
@@ -81,6 +65,16 @@ export function Gallery() {
       image.src = entry.item.url;
     });
   }, [active, filtered]);
+
+  useEffect(() => {
+    if (!activeItem) return;
+    setModalLoading(true);
+    setModalProgress(8);
+    const id = window.setInterval(() => {
+      setModalProgress((prev) => (prev >= 92 ? prev : prev + 7));
+    }, 120);
+    return () => window.clearInterval(id);
+  }, [activeItem?.item.key]);
 
   const resetTransform = () => {
     setScale(1);
@@ -113,13 +107,11 @@ export function Gallery() {
   useEffect(() => {
     const node = wheelTargetRef.current;
     if (!node) return;
-
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
       const direction = event.deltaY < 0 ? 0.22 : -0.22;
       setScale((s) => clamp(s + direction, MIN_SCALE, MAX_SCALE));
     };
-
     node.addEventListener("wheel", onWheel, { passive: false });
     return () => node.removeEventListener("wheel", onWheel);
   }, [activeItem?.item.key]);
@@ -165,10 +157,21 @@ export function Gallery() {
       ) : (
         <div className="columns-1 gap-5 space-y-5 sm:columns-2 xl:columns-3">
           {filtered.map((row, idx) => (
-            <button key={row.item.key} type="button" className="group relative block w-full break-inside-avoid overflow-hidden rounded-3xl border border-white/15 bg-white/[0.03] text-left" onClick={() => setActive(idx)}>
-              <img src={row.item.url} alt={row.title} loading="lazy" decoding="async" className="w-full object-cover transition duration-500 group-hover:scale-[1.04]" />
+            <button key={row.item.key} type="button" className="group shadow-reveal relative block w-full break-inside-avoid overflow-hidden rounded-3xl border border-white/15 bg-white/[0.03] text-left" onClick={() => setActive(idx)}>
+              {!cardLoaded[row.item.key] ? <Skeleton className="absolute inset-0 h-full w-full" /> : null}
+              <img
+                src={row.item.url}
+                alt={row.title}
+                loading="lazy"
+                decoding="async"
+                className="w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                onLoad={() => setCardLoaded((prev) => ({ ...prev, [row.item.key]: true }))}
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent opacity-0 transition group-hover:opacity-100" />
-              <div className="absolute inset-x-0 bottom-0 p-4 opacity-0 transition group-hover:opacity-100"><p className="text-lg font-medium">{row.title}</p></div>
+              <div className="absolute inset-x-0 bottom-0 p-4 opacity-0 transition group-hover:opacity-100">
+                <p className="text-lg font-medium">{row.title}</p>
+                <div className="mt-2 flex flex-wrap gap-2">{row.tags.slice(0, 4).map((tag) => <span key={tag} className="badge">{tag}</span>)}</div>
+              </div>
             </button>
           ))}
         </div>
@@ -178,9 +181,7 @@ export function Gallery() {
         {activeItem ? (
           <div className="flex h-[88vh] flex-col gap-4 p-4 md:p-6" onTouchStart={(event) => {
             const now = Date.now();
-            if (now - lastTap.current < 260) {
-              setScale((s) => (s > 1 ? 1 : 2.2));
-            }
+            if (now - lastTap.current < 260) setScale((s) => (s > 1 ? 1 : 2.2));
             lastTap.current = now;
             if (event.touches.length === 2) {
               const [a, b] = [event.touches[0], event.touches[1]];
@@ -205,12 +206,22 @@ export function Gallery() {
             </div>
 
             <div className="relative flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black/40 backdrop-blur-xl">
+              {modalLoading ? (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/45">
+                  <div className="loader-spin h-8 w-8 rounded-full border-2 border-white/20 border-t-white/90" />
+                  <div className="h-1.5 w-40 overflow-hidden rounded-full bg-white/15"><div className="h-full bg-indigo-300 transition-all" style={{ width: `${modalProgress}%` }} /></div>
+                </div>
+              ) : null}
               <img
                 ref={wheelTargetRef}
                 src={activeItem.item.url}
                 alt={activeItem.title}
                 className={isAnimating ? "h-full w-full cursor-grab select-none object-contain viewer-image is-switching" : "h-full w-full cursor-grab select-none object-contain viewer-image"}
                 style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
+                onLoad={() => {
+                  setModalLoading(false);
+                  setModalProgress(100);
+                }}
                 onPointerDown={(event) => {
                   pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
                   (event.currentTarget as HTMLImageElement).setPointerCapture(event.pointerId);
