@@ -1,14 +1,15 @@
 import { Card } from "../components/ui/Card";
 import { SectionTitle } from "../components/SectionTitle";
-import { BehanceIcon, InstagramIcon, LinkedInIcon, MailIcon } from "../components/icons";
+import { ArrowIcon, FilmIcon, GalleryIcon, LinkedInIcon, MailIcon } from "../components/icons";
 
 const tools = ["Blender", "After Effects", "Premiere Pro", "Photoshop"];
 
 const links = [
   { href: "mailto:abdulmelikdilshad@gmail.com", label: "Email", icon: MailIcon },
-  { href: "https://instagram.com", label: "Instagram", icon: InstagramIcon },
-  { href: "https://behance.net", label: "Behance", icon: BehanceIcon },
-  { href: "https://linkedin.com", label: "LinkedIn", icon: LinkedInIcon }
+  { href: "https://www.linkedin.com/in/abdulmalek-ahmed-616b7a174", label: "LinkedIn", icon: LinkedInIcon },
+  { href: "https://abdulmalekd1.artstation.com/", label: "ArtStation", icon: GalleryIcon },
+  { href: "https://www.freelancer.com/u/abdulmalek3D?sb=t", label: "Freelancer", icon: ArrowIcon },
+  { href: "https://vimeo.com/abdulmalekdlshad", label: "Vimeo", icon: FilmIcon }
 ];
 
 export function About() {
@@ -25,7 +26,7 @@ export function About() {
             I am Abdulmalek Dlshad Ahmed, a Blender-based 3D artist and motion graphics designer. I build complete visuals from concept to final delivery, with a strong focus on lighting, material quality, and clean composition.
           </p>
           <p className="leading-relaxed text-slate-300">
-            My work spans product visuals, interiors, and short-form motion pieces for portfolio, client previews, and digital campaigns. I am based in Erbil, Iraq, and available for remote freelance or studio collaborations.
+            My work spans product visuals, interiors, and short-form motion pieces for portfolio, client previews, and digital campaigns. I am available for remote freelance or studio collaborations.
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
             {tools.map((tool) => <span key={tool} className="badge">{tool}</span>)}
@@ -43,7 +44,7 @@ export function About() {
             <p className="text-sm text-slate-400">Let’s build premium product visuals and motion assets.</p>
             <div className="mt-4 flex flex-wrap gap-2">
               {links.map(({ href, label, icon: Icon }) => (
-                <a key={label} className="icon-btn" href={href} target="_blank" rel="noreferrer" aria-label={label}>
+                <a key={label} className="icon-btn" href={href} target="_blank" rel="noreferrer" aria-label={label} title={label}>
                   <Icon className="h-4 w-4" />
                 </a>
               ))}
