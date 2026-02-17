@@ -8,6 +8,24 @@
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <title>VisualCraft Showroom</title>
 
+    <script>
+      // Decode GitHub Pages SPA redirect query back into the real client route.
+      (function () {
+        var redirect = window.location.search;
+        if (!redirect || redirect[1] !== '/') return;
+
+        var decoded = redirect
+          .slice(1)
+          .split('&')
+          .map(function (part) {
+            return part.replace(/~and~/g, '&');
+          })
+          .join('?');
+
+        window.history.replaceState(null, '', window.location.pathname.replace(/\/$/, '') + decoded + window.location.hash);
+      })();
+    </script>
+
     <!-- 3D preview component (GLB/GLTF) -->
     <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
   </head>
