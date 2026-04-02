@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "/visualcraft-showroom/",
+  base: "/Graneor/",
   build: {
     sourcemap: true
   }
